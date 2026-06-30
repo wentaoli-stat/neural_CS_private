@@ -2,59 +2,26 @@
 
 > Transcription note: Math is delimited with `$...$` and `$$...$$` for VSCode Markdown rendering. I kept the mathematical notation as close as possible to the handwritten notes. I kept the mathematical notation as close as possible to the handwritten notes. A few symbols are ambiguous in the scan; I marked these with `[unclear]` where necessary.
 
-## Page 1 — Goal: approximate the full Fisher score using marginal and pairwise composite scores
+## Motivation: approximate the full Fisher score using marginal and pairwise composite scores
+
 
 Consider $Y \sim f(Y;\theta_0)$ where $\theta_0\in\mathbb{R}^p$ is the data-generating parameter. We try to approximate the Fisher score $\nabla_{\theta}\log f(Y;\theta_0)$. 
 
-For example, consider a multivariate $t$ model. The score can be written as
+Existing architectures includes
 
 $$
-\nabla_{\rho,\nu}\log f(Y;\rho,\nu)
-=
-\nabla\left\{C_1(\rho,\nu)\log\left(1+\frac{Q(Y;\rho)}{\nu}\right)+C_2(\rho,\nu)\right\}.
+S_\psi(\theta,\{X_i\}_{i=1}^n),
 $$
+(This includes $S_\psi(\theta,\{X_i\}_{i=1}^n,\{(X_i,X_j)\}_{i,j=1}^n)$)
+Khoo et al 2025 and Jiang et al 2026. 
 
-Equivalently,
-
-$$
-\nabla_{\rho,\nu}\log f(Y_i;\rho,\nu)
-=
-\nabla\{C_1(\rho,\nu)R(Q_1(Y_i;\rho),\nu)+C_2(\rho,\nu)\},
-$$
-
-and for pairs
-
-$$
-\nabla_{\rho,\nu}\log f(Y_i,Y_j;\rho,\nu)
-\propto
-\nabla R(Q_2(Y_i,Y_j;\rho),\nu).
-$$
-
-Since
-
-$$
-Q(Y;\rho) =
-\sum_{i,j} w_{ij}(\rho)
-L\{Q_1(Y_i;\rho),Q_2(Y_i,Y_j;\rho)\},
-$$
-
-we have $\nabla_{\rho,\nu}\log f(Y;\rho,\nu)$ exactly a nonlinear transformation of $\nabla_{\rho,\nu}\log f(Y_i;\rho,\nu)$ and $\nabla_{\rho,\nu}\log f(Y_i,Y_j;\rho,\nu)$.
+### New Architecture:  Nonlinear aggregation of marginal and pairwise subscores
 
 Let  $cs_1(Y_i;\theta) = \nabla_{\theta}\log f(Y_i;\theta)$ and $cs_2(Y_i,Y_j;\theta)=\nabla_{\theta}\log f(Y_i,Y_j;\theta)$. The new method is to approximate $\nabla_{\theta}\log f(Y;\theta)$ using 
 
 $$S_{\psi,\phi}(X,\theta)=S_\psi\{\theta,CS_1(X,\theta; \phi), CS_2(X,\theta; \phi)\}\in\mathbb{R}^p,$$
 
 where $CS_1(Y,\theta; \phi) = \sum_{i=1}^n a_{\phi}(cs_1(Y_i;\theta) )$ and $CS_2(Y,\theta; \phi)=\sum_{i<j} b_{\phi}(cs_2(Y_i,Y_j;\theta))$, in an $L^2$ sense.
-
-Alternative architectures include
-
-$$
-S_\psi(\theta,\{X_i\}_{i=1}^n)
-$$
-
-$$
-S_\psi(\theta,\{X_i\}_{i=1}^n,\{(X_i,X_j)\}_{i,j=1}^n)
-$$
 
 
 <!-- $$
@@ -90,6 +57,40 @@ $$
 
 But $\log f(X\mid\theta,\nu)$ is unknown.
 
+#### Example:
+As a motivating example, consider a multivariate $t$ model. The score can be written as
+
+$$
+\nabla_{\rho,\nu}\log f(Y;\rho,\nu)
+=
+\nabla\left\{C_1(\rho,\nu)\log\left(1+\frac{Q(Y;\rho)}{\nu}\right)+C_2(\rho,\nu)\right\}.
+$$
+
+Equivalently,
+
+$$
+\nabla_{\rho,\nu}\log f(Y_i;\rho,\nu)
+=
+\nabla\{C_1(\rho,\nu)R(Q_1(Y_i;\rho),\nu)+C_2(\rho,\nu)\},
+$$
+
+and for pairs
+
+$$
+\nabla_{\rho,\nu}\log f(Y_i,Y_j;\rho,\nu)
+\propto
+\nabla R(Q_2(Y_i,Y_j;\rho),\nu).
+$$
+
+Since
+
+$$
+Q(Y;\rho) =
+\sum_{i,j} w_{ij}(\rho)
+L\{Q_1(Y_i;\rho),Q_2(Y_i,Y_j;\rho)\},
+$$
+
+we have $\nabla_{\rho,\nu}\log f(Y;\rho,\nu)$ exactly a nonlinear transformation of $\nabla_{\rho,\nu}\log f(Y_i;\rho,\nu)$ and $\nabla_{\rho,\nu}\log f(Y_i,Y_j;\rho,\nu)$.
 
 
 ### Can not do sampling and data compression simultaneously in CSDM
@@ -126,9 +127,7 @@ $$
 
 This is not what we want.
 
----
-
-## Why raw score-variance objectives are problematic
+### Raw score-variance objective (Fisher information) is problematic
 
 One might want to optimize the Fisher information
 
@@ -228,16 +227,19 @@ $$
 (How to train this?)
 
 ---
-### Benchmarks
+## Benchmarks
 
 For X = {x_i},
 
-* MLP with {x_i}
-<!-- * MLP with {x_i} and {(x_i, x_i * x_j)} -->
-* Linear with {x_i} as in Khoo et al 2025
-* MLP with {x_i} under constraints as in Jiang et al 2026 (for amortization, can it learn features such as x^{\theta})
-* Linearly aggregated batched composite score
+M1: MLP with {x_i}
 
+M2: Linear with {x_i} as in Khoo et al 2025
+
+M3: Linearly aggregated batched composite score
+
+M4: MLP with {x_i} under constraints as in Jiang et al 2026 (for amortization, can it learn features such as x^{\theta})
+
+M5: new method
 <!-- 
 * $U_\phi(X; \theta) = h_{\psi}\left(\sum_i a_\phi\left(\theta, X_i\right) , \sum_{i<j} b_\phi\left(\theta, X_i, X_j\right)\right)$, i.e. using raw data and raw pairs instead of marginal scores and pairwise scores. The benefits include
   
@@ -245,16 +247,35 @@ For X = {x_i},
   * $U_{\phi}$ is less robust in extreme values of $(X_i, X_j)$ than the new method
   * The variance matrix in Godambe info may be more stable for the new method than  $U_{\phi}$. 
    -->
-* Other ablations
+Ablations
 
 Try simulation budget from small to large
 
-Metrics:
-* Score approximation error, given the true score function
+### Intuitive comparison
+*  M1 vs M5: The Gaussian example and Box-Cox transformed Gaussian example show subscores contain features in the Fisher score, and M1 need to learn them from scratch. So M5 has lower inductive bias.
+*  M4 vs M5: The multivariate t example shows the Fisher score is a nonlinear combination of these features and hence the subscores.
+
+### Metrics
+* Score approximation error, given the true score function, under same simulation budget and as simulation budget increases 
 * Godambe information in the form of $R E_{\mathrm{det}}=\left[\frac{\operatorname{det} G\left(\theta_0\right)}{\operatorname{det} I\left(\theta_0\right)}\right]^{1 / d_\theta}$, relative to the Fisher information
+* Visualize and compare the historgram/contour plots of 1D/2D Fisher score and approximate scores as random variables  
 * With sampling results, compare RMSE of posterior mean, bias, posterior variance and credible interval coverage
 
+### Conceptual examples
+
+#### Gaussian example
+
+#### Box-Cox transformed Gaussian (in Appendix)
+See the box_cox_transformed_gaussian_subscore_example.md file 
+
+
 ---
+## Numerical Examples
+
+* Vector AR(1) with multivariate t noise where $X_i \in \mathbb{R}^{20}$; $cs_1(X_i,\theta)\in\mathbb{R}^2$ and $cs_2(X_i,X_j,\theta)\in\mathbb{R}^2$ provide low-dimensional features
+
+---
+## Further refinements
 ### Variance inversion in optimization
 One issue is that
 
@@ -262,14 +283,13 @@ $$
 \operatorname{Var}_{\theta_0}
 \{S_{\psi,\phi}(X,\theta_0)\}^{-1}
 $$
-is delicate in optimisation.
+is delicate in optimisation. 
 
 ---
-### An extension
+### Over-identification extension
 
 Use $S_{\psi,\phi}(X,\theta)\in\mathbb{R}^q$ where $q>p$, i.e. an over-identified estimating function. Its Godambe information is still $p$-dimensional. 
 
 
-Vector AR with t innnovation: $X_i \in \mathbb{R}^{20}, cs_2(X_i,X_j,\theta)\in\mathbb{R}^2$ 
 
 
