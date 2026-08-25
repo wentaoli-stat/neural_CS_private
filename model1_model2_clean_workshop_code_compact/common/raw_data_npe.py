@@ -1,0 +1,383 @@
+#!/usr/bin/env python3
+"""Naive raw-data Stage-2 NPE baseline for cleaned Model 1 and Model 2.
+
+The context is the complete simulated array in its canonical block/coordinate
+order, flattened to one vector.  No pilot, composite score, analytic summary,
+or ground-truth parameter is passed to the context builder.  The simulation,
+NPE, posterior-sampling, and exact-evaluation seeds match the formal Stage-2
+launchers so results are paired by construction.
+"""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import hashlib
+import json
+import math
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+import torch
+
+from common import npe as shared_npe
+from model1 import npe_utils as model1_npe
+from model1 import stage1 as model1_stage1
+from model2 import npe_utils as model2_npe
+from model2 import stage1 as model2_stage1
+
+
+MODEL_DEFAULTS = {
+    "model1": {"n_blocks": 20, "block_size": 20, "tau": 0.5},
+    "model2": {"n_blocks": 40, "block_size": 40, "tau": 1.0},
+}
+METHOD_LABEL = "raw data NPE"
+CONTEXT_DEFINITION = "flatten(Y) in canonical block/coordinate order"
+
+
+def parse_list(text: str, cast: Any) -> list[Any]:
+    return [cast(part.strip()) for part in str(text).split(",") if part.strip()]
+
+
+def write_csv(path: Path, rows: list[dict[str, object]]) -> None:
+    if not rows:
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def sha256_array(value: np.ndarray) -> str:
+    array = np.ascontiguousarray(value)
+    digest = hashlib.sha256()
+    digest.update(str(array.dtype).encode("ascii"))
+    digest.update(np.asarray(array.shape, dtype=np.int64).tobytes())
+    digest.update(array.tobytes())
+    return digest.hexdigest()
+
+
+def raw_context(y: np.ndarray) -> np.ndarray:
+    """Return the literal flattened observations; no handcrafted statistic."""
+    array = np.asarray(y)
+    if array.ndim != 3:
+        raise ValueError(f"raw observations must have shape (N,K,m), got {array.shape}")
+    if not np.all(np.isfinite(array)):
+        raise FloatingPointError("raw observations contain non-finite values")
+    return np.ascontiguousarray(array.reshape(array.shape[0], -1), dtype=np.float32)
+
+
+def resolve_model_args(args: argparse.Namespace) -> None:
+    defaults = MODEL_DEFAULTS[str(args.model)]
+    if args.n_blocks is None:
+        args.n_blocks = int(defaults["n_blocks"])
+    if args.block_size is None:
+        args.block_size = int(defaults["block_size"])
+    if args.tau is None:
+        args.tau = float(defaults["tau"])
+    if int(args.n_blocks) < 1 or int(args.block_size) < 1 or float(args.tau) <= 0.0:
+        raise ValueError("n_blocks, block_size, and tau must be positive")
+
+
+def simulate(
+    rng: np.random.Generator,
+    pi: np.ndarray,
+    args: argparse.Namespace,
+) -> np.ndarray:
+    pi_array = np.asarray(pi, dtype=np.float64).reshape(-1)
+    if str(args.model) == "model1":
+        return model1_stage1.simulate_mean_shift(
+            rng,
+            model1_stage1.logit_np(pi_array),
+            int(args.n_blocks),
+            int(args.block_size),
+            float(args.tau),
+        )
+    return model2_stage1.simulate_common_factor(
+        rng,
+        model2_stage1.logit_np(pi_array),
+        int(args.n_blocks),
+        int(args.block_size),
+        float(args.tau),
+    )
+
+
+def exact_posterior(
+    y: np.ndarray,
+    args: argparse.Namespace,
+) -> tuple[np.ndarray, np.ndarray, dict[str, float]]:
+    helper = model1_npe if str(args.model) == "model1" else model2_npe
+    grid, weights, cdf = helper.exact_posterior_grid_arrays(y, args)
+    mean = float(np.sum(weights * grid))
+    sd = float(np.sqrt(np.sum(weights * (grid - mean) ** 2)))
+    return grid, cdf, {
+        "mean": mean,
+        "sd": sd,
+        "q05": float(np.interp(0.05, cdf, grid)),
+        "q50": float(np.interp(0.50, cdf, grid)),
+        "q95": float(np.interp(0.95, cdf, grid)),
+    }
+
+
+def standard_error(values: list[float]) -> float:
+    array = np.asarray(values, dtype=np.float64)
+    return float(array.std(ddof=1) / math.sqrt(array.size)) if array.size > 1 else 0.0
+
+
+def summarize(rows: list[dict[str, object]]) -> list[dict[str, object]]:
+    grouped: dict[tuple[float, str], list[dict[str, object]]] = {}
+    for row in rows:
+        grouped.setdefault((float(row["pi_true"]), str(row["method"])), []).append(row)
+    output: list[dict[str, object]] = []
+    for (pi_true, method), group in sorted(grouped.items()):
+        truth_sq = [float(row["pi_sq_err"]) for row in group]
+        exact_sq = [float(row["mean_sq_err_to_exact"]) for row in group]
+        output.append(
+            {
+                "pi_true": pi_true,
+                "method": method,
+                "n_seeds": len(group),
+                "pi_avg_mse": float(np.mean(truth_sq)),
+                "pi_mse_se": standard_error(truth_sq),
+                "rmse_mean_to_exact": float(np.sqrt(np.mean(exact_sq))),
+                "mean_mse_to_exact": float(np.mean(exact_sq)),
+                "w1_to_exact": float(
+                    np.mean([float(row["w1_to_exact"]) for row in group])
+                ),
+                "avg_post_sd": float(
+                    np.mean([float(row["pi_post_sd"]) for row in group])
+                ),
+                "sd_abs_err_to_exact": float(
+                    np.mean(
+                        [
+                            abs(
+                                float(row["pi_post_sd"])
+                                - float(row["exact_pi_post_sd"])
+                            )
+                            for row in group
+                        ]
+                    )
+                ),
+                "coverage90": float(
+                    np.mean([float(row["coverage90"]) for row in group])
+                ),
+            }
+        )
+    return output
+
+
+def build_npe_args(args: argparse.Namespace) -> argparse.Namespace:
+    return argparse.Namespace(
+        pi_prior_min=float(args.pi_prior_min),
+        pi_prior_max=float(args.pi_prior_max),
+        sbi_model=str(args.sbi_model),
+        sbi_hidden_features=int(args.sbi_hidden_features),
+        sbi_num_components=int(args.sbi_num_components),
+        sbi_num_transforms=int(args.sbi_num_transforms),
+        sbi_num_bins=int(args.sbi_num_bins),
+        sbi_batch_size=int(args.sbi_batch_size),
+        sbi_lr=float(args.sbi_lr),
+        max_epochs=int(args.max_epochs),
+        validation_fraction=float(args.validation_fraction),
+        stop_after_epochs=int(args.stop_after_epochs),
+    )
+
+
+def run(args: argparse.Namespace) -> None:
+    resolve_model_args(args)
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=False)
+    device = shared_npe.resolve_device(str(args.device))
+    data_device = shared_npe.resolve_device(str(args.data_device))
+
+    rng = np.random.default_rng(int(args.sbi_train_seed))
+    pi_train = rng.uniform(
+        float(args.pi_prior_min),
+        float(args.pi_prior_max),
+        size=int(args.n_sbi_train),
+    )
+    y_train = simulate(rng, pi_train, args)
+    context = raw_context(y_train)
+    if context.shape != (
+        int(args.n_sbi_train),
+        int(args.n_blocks) * int(args.block_size),
+    ):
+        raise AssertionError(f"unexpected raw context shape: {context.shape}")
+    pi_train_sha256 = sha256_array(pi_train.astype(np.float64))
+    raw_context_sha256 = sha256_array(context)
+    del y_train
+
+    NPE, posterior_nn, BoxUniform = shared_npe.import_sbi()
+    helper_args = build_npe_args(args)
+    result = shared_npe.train_sbi_npe_method(
+        NPE,
+        posterior_nn,
+        BoxUniform,
+        METHOD_LABEL,
+        context,
+        pi_train,
+        int(args.sbi_seed),
+        helper_args,
+        device,
+        data_device,
+    )
+    torch.save(
+        {
+            "model": str(args.model),
+            "method": "raw_data",
+            "label": METHOD_LABEL,
+            "state_dict": result["posterior"].posterior_estimator.state_dict(),
+            "context": CONTEXT_DEFINITION,
+            "context_dim": int(context.shape[1]),
+            "config": vars(args),
+            "pi_train_sha256": pi_train_sha256,
+            "raw_context_sha256": raw_context_sha256,
+        },
+        output_dir / "npe_raw_data_state.pt",
+    )
+
+    rows: list[dict[str, object]] = []
+    for pi_true in parse_list(args.test_pi_values, float):
+        if not float(args.pi_prior_min) <= pi_true <= float(args.pi_prior_max):
+            raise ValueError(f"test pi {pi_true} lies outside the prior")
+        for obs_seed in parse_list(args.test_seeds, int):
+            obs_rng = np.random.default_rng(int(obs_seed))
+            y_obs = simulate(obs_rng, np.asarray([pi_true]), args)
+            x_obs = raw_context(y_obs)[0]
+            exact_grid, exact_cdf, exact = exact_posterior(y_obs[0], args)
+            rows.append(
+                {
+                    "pi_true": pi_true,
+                    "seed": obs_seed,
+                    "method": "exact likelihood grid",
+                    "pi_post_mean": exact["mean"],
+                    "pi_post_sd": exact["sd"],
+                    "exact_pi_post_sd": exact["sd"],
+                    "q05": exact["q05"],
+                    "q50": exact["q50"],
+                    "q95": exact["q95"],
+                    "pi_sq_err": float((exact["mean"] - pi_true) ** 2),
+                    "mean_sq_err_to_exact": 0.0,
+                    "w1_to_exact": 0.0,
+                    "coverage90": float(exact["q05"] <= pi_true <= exact["q95"]),
+                }
+            )
+            samples = shared_npe.sample_sbi_posterior(
+                result,
+                x_obs,
+                int(args.posterior_n),
+                int(args.posterior_seed) + int(obs_seed),
+                helper_args,
+            )
+            mean = float(np.mean(samples))
+            sd = float(np.std(samples))
+            q05, q50, q95 = [
+                float(value) for value in np.quantile(samples, [0.05, 0.50, 0.95])
+            ]
+            rows.append(
+                {
+                    "pi_true": pi_true,
+                    "seed": obs_seed,
+                    "method": METHOD_LABEL,
+                    "pi_post_mean": mean,
+                    "pi_post_sd": sd,
+                    "exact_pi_post_sd": exact["sd"],
+                    "q05": q05,
+                    "q50": q50,
+                    "q95": q95,
+                    "pi_sq_err": float((mean - pi_true) ** 2),
+                    "mean_sq_err_to_exact": float((mean - exact["mean"]) ** 2),
+                    "w1_to_exact": shared_npe.exact_sample_w1(
+                        samples, exact_grid, exact_cdf
+                    ),
+                    "coverage90": float(q05 <= pi_true <= q95),
+                }
+            )
+
+    summary = summarize(rows)
+    write_csv(output_dir / "posterior_by_seed.csv", rows)
+    write_csv(output_dir / "posterior_summary.csv", summary)
+    config = {
+        **{
+            key: str(value) if isinstance(value, Path) else value
+            for key, value in vars(args).items()
+        },
+        "context_definition": CONTEXT_DEFINITION,
+        "context_dim": int(context.shape[1]),
+        "true_parameter_role": "NPE target only; never passed to raw_context",
+        "pi_train_sha256": pi_train_sha256,
+        "raw_context_sha256": raw_context_sha256,
+    }
+    (output_dir / "config.json").write_text(
+        json.dumps(config, indent=2), encoding="utf-8"
+    )
+
+    print("\n==== Raw-data NPE posterior summary ====")
+    for row in summary:
+        print(row)
+    print("Saved:", output_dir)
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model", choices=tuple(MODEL_DEFAULTS), required=True)
+    parser.add_argument("--n-blocks", type=int, default=None)
+    parser.add_argument("--block-size", type=int, default=None)
+    parser.add_argument("--tau", type=float, default=None)
+    parser.add_argument("--pi-prior-min", type=float, default=0.05)
+    parser.add_argument("--pi-prior-max", type=float, default=0.70)
+    parser.add_argument("--n-sbi-train", type=int, default=50_000)
+    parser.add_argument("--sbi-train-seed", type=int, default=20260723)
+    parser.add_argument(
+        "--sbi-model", choices=("mdn", "maf", "nsf", "made"), default="mdn"
+    )
+    parser.add_argument("--sbi-hidden-features", type=int, default=64)
+    parser.add_argument(
+        "--sbi-num-components",
+        type=int,
+        default=8,
+        help="Mixture components for MDN; ignored by non-MDN estimators.",
+    )
+    parser.add_argument(
+        "--sbi-num-transforms",
+        type=int,
+        default=5,
+        help="Flow transforms for MAF/NSF; ignored by MDN and MADE.",
+    )
+    parser.add_argument(
+        "--sbi-num-bins",
+        type=int,
+        default=8,
+        help="Spline bins for NSF only; ignored by other estimators.",
+    )
+    parser.add_argument("--sbi-batch-size", type=int, default=256)
+    parser.add_argument("--sbi-lr", type=float, default=5e-4)
+    parser.add_argument("--max-epochs", type=int, default=300)
+    parser.add_argument("--validation-fraction", type=float, default=0.10)
+    parser.add_argument("--stop-after-epochs", type=int, default=20)
+    parser.add_argument("--sbi-seed", type=int, default=54000)
+    parser.add_argument(
+        "--test-pi-values", type=str, default="0.07,0.10,0.30,0.50,0.65,0.68"
+    )
+    parser.add_argument(
+        "--test-seeds",
+        type=str,
+        default="100,101,102,103,104,105,106,107,108,109",
+    )
+    parser.add_argument("--posterior-n", type=int, default=5_000)
+    parser.add_argument("--posterior-seed", type=int, default=87000)
+    parser.add_argument("--grid-size", type=int, default=5_000)
+    parser.add_argument("--device", type=str, default="auto")
+    parser.add_argument("--data-device", type=str, default="cpu")
+    parser.add_argument("--output-dir", type=Path, required=True)
+    return parser
+
+
+def main() -> None:
+    run(build_parser().parse_args())
+
+
+if __name__ == "__main__":
+    main()

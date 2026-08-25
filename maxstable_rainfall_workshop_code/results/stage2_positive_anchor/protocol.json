@@ -1,0 +1,39 @@
+{
+  "selected_method": "ours raw positive(s,anchor)-local-gate full-dataset score + shared NPE",
+  "n_train": 10000,
+  "n_test": 100,
+  "one_complete_dataset": "(47 iid annual fields, 79 sites)",
+  "context": "(pilot_w[3], full_dataset_score_w_at_pilot[3])",
+  "pilot": {
+    "full_pair_count": 3081,
+    "pairs_per_group": 25,
+    "selected_pair_count": 500,
+    "pair_selection_seed": 20260819,
+    "pair_selection": "fixed random sample within every distance/angle group",
+    "iterations": 12,
+    "n_starts": 15,
+    "n_refine_starts": 3,
+    "start_radius": 2.0,
+    "backtracking_steps": 6,
+    "tolerance": 0.001,
+    "projected_residual_median_train": 7.688229906098585e-10,
+    "projected_residual_median_test": 1.725413185119165e-10,
+    "failure_fraction_train": 0.28480000000000005,
+    "failure_fraction_test": 0.26,
+    "boundary_fraction_train": 0.284,
+    "boundary_fraction_test": 0.26,
+    "fallback_fraction_train": 0.0,
+    "fallback_fraction_test": 0.0
+  },
+  "npe": {
+    "model": "mdn",
+    "hidden": 64,
+    "components": 8,
+    "batch_size": 256,
+    "seed": 54000
+  },
+  "shared_data_only_pilot": true,
+  "true_parameter_in_context": false,
+  "true_full_likelihood_or_score_used": false,
+  "archived_stage1_checkpoint_path": "/root/autodl-tmp/maxstable_fair_v2_single_seed_20260819/stage1_positive_anchor_seed20260819/stage1_fixed_final_ema.pt"
+}

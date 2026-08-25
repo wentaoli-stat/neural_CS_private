@@ -1,0 +1,11 @@
+jax
+numpy
+rpy2
+scipy
+torch
+
+[npe]
+sbi
+
+[test]
+pytest

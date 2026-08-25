@@ -1,0 +1,37 @@
+[
+  {
+    "method": "ours raw positive(s,anchor)-local-gate full-dataset score + shared NPE",
+    "n_test": 100,
+    "posterior_mean_rmse_by_coordinate": [
+      0.04403480777977584,
+      0.04405292817607683,
+      0.03513506764269973
+    ],
+    "posterior_mean_l2_rmse_to_generating_parameter": 0.0715136193696381,
+    "posterior_mean_mae_by_coordinate": [
+      0.0351416732818289,
+      0.034422926028545235,
+      0.027622177691156855
+    ],
+    "marginal_90_coverage_by_coordinate": [
+      0.88,
+      0.9,
+      0.83
+    ],
+    "mean_90_width_by_coordinate": [
+      0.1392591362215579,
+      0.14318775115169122,
+      0.1008116257631686
+    ],
+    "pilot_converged_count": 74,
+    "pilot_boundary_count": 26,
+    "pilot_converged_n": 74,
+    "pilot_converged_joint_l2_rmse": 0.0687963422900187,
+    "pilot_not_converged_n": 26,
+    "pilot_not_converged_joint_l2_rmse": 0.07873579452110882,
+    "pilot_interior_n": 74,
+    "pilot_interior_joint_l2_rmse": 0.0687963422900187,
+    "pilot_boundary_n": 26,
+    "pilot_boundary_joint_l2_rmse": 0.07873579452110882
+  }
+]

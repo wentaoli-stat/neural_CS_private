@@ -1,0 +1,3 @@
+reference,competitor,n_pairs,reference_mean_w1,competitor_mean_w1,reference_improvement_percent,mean_paired_difference,paired_t,paired_p,reference_wins
+radial FSM pilot+score NPE,linear FSM pilot+score NPE,60,0.00693337447521777,0.011908931868775037,41.780047517133525,-0.004975557393557271,-8.25332129482407,2.0430286108922695e-11,51
+radial FSM pilot+score NPE,pilot-only NPE,60,0.00693337447521777,0.023149131451474,70.049094542697,-0.01621575697625623,-7.102858147240259,1.8116619285701993e-09,53

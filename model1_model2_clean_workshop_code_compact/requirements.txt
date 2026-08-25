@@ -1,0 +1,8 @@
+# Verified project environment: Python 3.12.
+numpy>=2.3,<2.4
+torch>=2.8,<2.9
+scipy>=1.18,<1.19
+matplotlib>=3.10,<3.11
+sbi==0.24.0
+tqdm
+

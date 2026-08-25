@@ -1,0 +1,42 @@
+{
+  "model": "model2",
+  "n_iid_blocks_per_complete_dataset": 40,
+  "block_size": 20,
+  "n_sbi_train_complete_datasets": 50000,
+  "n_test_complete_datasets": 100,
+  "jiang_checkpoint": "artifacts/checkpoints/jiang/model2/models/jiang_round1.pt",
+  "jiang_round": 1,
+  "jiang_round2_used": false,
+  "fsm_run_dirs": {
+    "20260709": "artifacts/checkpoints/ours/model2/seed20260709",
+    "20260710": "artifacts/checkpoints/ours/model2/seed20260710",
+    "20260711": "artifacts/checkpoints/ours/model2/seed20260711",
+    "20260712": "artifacts/checkpoints/ours/model2/seed20260712",
+    "20260713": "artifacts/checkpoints/ours/model2/seed20260713"
+  },
+  "shared_data_only_pilot": true,
+  "shared_stage2_simulations": true,
+  "shared_npe_architecture_optimizer_and_seed": true,
+  "score_context": "(pilot_u(D), estimated full-dataset u-score at pilot_u(D))",
+  "jiang_full_score": "sum of official debiased Round-1 single-block scores",
+  "true_parameter_role": "Stage-2 NPE target only; never a context input",
+  "exact_likelihood_role": "held-out posterior evaluation only",
+  "pilot_corr_true_u_train": 0.8099503916580482,
+  "pilot_boundary_rate_train": 0.17722,
+  "pilot_boundary_rate_test": 0.12,
+  "npe": {
+    "model": "mdn",
+    "hidden_features": 64,
+    "num_components": 8,
+    "batch_size": 256,
+    "learning_rate": 0.0005,
+    "maximum_epochs": 300,
+    "early_stop_patience": 20,
+    "seed_shared_by_every_method": 54000
+  },
+  "posterior_evaluation": {
+    "posterior_samples_per_dataset": 5000,
+    "exact_grid_size": 5000,
+    "headline_target": "exact posterior, never the simulated parameter"
+  }
+}

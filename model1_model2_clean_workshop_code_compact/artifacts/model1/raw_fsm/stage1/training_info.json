@@ -1,0 +1,8 @@
+{
+  "best_step": 20000,
+  "best_source": "raw",
+  "best_val_loss": 23.001213745117187,
+  "stopped_step": 20000,
+  "fixed_final_step": 20000,
+  "fixed_final_source": "ema"
+}

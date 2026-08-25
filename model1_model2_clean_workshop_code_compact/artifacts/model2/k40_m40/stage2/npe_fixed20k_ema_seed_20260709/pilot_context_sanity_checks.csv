@@ -1,0 +1,3 @@
+method,n,context_dim,no_oracle_parameter,pilot_deterministic,corr_pilot_true_u,pilot_boundary_rate,mean_abs_score,passed
+linear,64,2,True,True,0.8574677592690761,0.234375,1.1305185556411743,True
+shared_radial,64,2,True,True,0.8574677592690761,0.234375,1.2307655811309814,True

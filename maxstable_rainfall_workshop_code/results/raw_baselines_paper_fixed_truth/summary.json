@@ -1,0 +1,239 @@
+{
+  "protocol": {
+    "protocol_version": "paper_raw_baselines_fixed_truth_v1",
+    "methods": {
+      "Raw-data NPE": "literal flatten of the complete 47x79 raw field, then frozen NPE",
+      "Raw-data FSM": "shared paper rough pilot plus frozen raw-field FSM score at that pilot, then frozen NPE"
+    },
+    "stage1_training_seed": 20260819,
+    "stage2_simulation_seed": 20260731,
+    "stage2_npe_seed": 54000,
+    "fixed_truth_simulation_base_seed": 20260820,
+    "fixed_truth_simulation_offset": 30260820,
+    "fixed_truth_posterior_seed": 97000,
+    "posterior_samples_per_dataset": 5000,
+    "fixed_truths": [
+      [
+        0.25,
+        0.25,
+        0.25
+      ],
+      [
+        0.5,
+        0.5,
+        0.5
+      ],
+      [
+        0.75,
+        0.75,
+        0.75
+      ]
+    ],
+    "n_datasets_per_truth": 100,
+    "parameter_order": [
+      "Sigma_11",
+      "Sigma_12",
+      "Sigma_22"
+    ],
+    "extremal_grid_points": 96,
+    "all_methods_share_identical_raw_datasets": true,
+    "raw_fsm_uses_paper_rough_pilot": true,
+    "no_stage1_or_stage2_retraining": true,
+    "raw_npe_reconstruction_verified_against_saved_result": true,
+    "raw_bank_sha256": {
+      "low": "e0031a9ad050316efb3ad39c4c14108c73a57706ff06c4863336be88afaefbbd",
+      "center": "dcb3d5a8633adfd362add6a054e9e4472c53712aa9de6decfc66726896bf2451",
+      "high": "967be747ba223e202219e81c91d5437e91eeec330a9c3c30e632ba86218594e8"
+    },
+    "raw_fsm_stage1_selection": "fixed_final",
+    "raw_fsm_stage1_checkpoint_step": 10000,
+    "paths": {
+      "dgp_checkpoint": "/root/autodl-tmp/maxstable_raw_eval_20260824/checkpoints/dgp_stage1.pt",
+      "raw_npe_dir": "/root/autodl-tmp/maxstable_raw_eval_20260824/checkpoints/raw_npe",
+      "raw_fsm_stage1": "/root/autodl-tmp/maxstable_raw_eval_20260824/checkpoints/raw_fsm_stage1/stage1_fixed_final_ema.pt",
+      "raw_fsm_stage2_dir": "/root/autodl-tmp/maxstable_raw_eval_20260824/checkpoints/raw_fsm_stage2",
+      "fixed_bank_root": "/root/autodl-tmp/maxstable_raw_eval_20260824/fixed_bank",
+      "paper_reference_root": "/root/autodl-tmp/maxstable_raw_eval_20260824/paper_reference",
+      "evaluation_grid": "/root/autodl-tmp/maxstable_raw_eval_20260824/grid/evaluation_grid.npz"
+    }
+  },
+  "truths": [
+    {
+      "truth_label": "low",
+      "truth_u": [
+        0.25,
+        0.25,
+        0.25
+      ],
+      "truth_covariance": [
+        234.0640775763408,
+        -10.052372427314284,
+        130.1041446427431
+      ],
+      "methods": [
+        {
+          "method": "Raw-data NPE",
+          "n_datasets": 100,
+          "covariance_mse_by_parameter": [
+            11669.008608736274,
+            6436.36071208767,
+            3738.7024791783165
+          ],
+          "covariance_sum_mse": 21844.07180000226,
+          "covariance_mean_posterior_sd": [
+            78.22685255662986,
+            53.381695446501936,
+            43.54258961930379
+          ],
+          "covariance_coverage90": [
+            0.97,
+            0.98,
+            0.89
+          ],
+          "extremal_coefficient_ise": 0.0035930796483657655,
+          "extremal_coefficient_rmse": 0.05994230266152415
+        },
+        {
+          "method": "Raw-data FSM",
+          "n_datasets": 100,
+          "covariance_mse_by_parameter": [
+            547.4529104981742,
+            72.2786016726135,
+            222.63635875082008
+          ],
+          "covariance_sum_mse": 842.3678709216078,
+          "covariance_mean_posterior_sd": [
+            21.39590325307386,
+            10.944780485665847,
+            12.889043512161468
+          ],
+          "covariance_coverage90": [
+            0.92,
+            0.95,
+            0.87
+          ],
+          "extremal_coefficient_ise": 0.00023146331551910897,
+          "extremal_coefficient_rmse": 0.015213918480099365
+        }
+      ]
+    },
+    {
+      "truth_label": "center",
+      "truth_u": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "truth_covariance": [
+        332.15273677999994,
+        70.39821371,
+        184.62656960000004
+      ],
+      "methods": [
+        {
+          "method": "Raw-data NPE",
+          "n_datasets": 100,
+          "covariance_mse_by_parameter": [
+            139.85675185343624,
+            22.515935098542318,
+            53.22972331134154
+          ],
+          "covariance_sum_mse": 215.60241026332008,
+          "covariance_mean_posterior_sd": [
+            78.11172485033485,
+            53.21985236219032,
+            43.482376696459895
+          ],
+          "covariance_coverage90": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "extremal_coefficient_ise": 6.63189642086687e-05,
+          "extremal_coefficient_rmse": 0.008143645633785198
+        },
+        {
+          "method": "Raw-data FSM",
+          "n_datasets": 100,
+          "covariance_mse_by_parameter": [
+            1518.9714576752003,
+            272.28792670545926,
+            615.2377585365459
+          ],
+          "covariance_sum_mse": 2406.4971429172056,
+          "covariance_mean_posterior_sd": [
+            31.46166400897326,
+            16.6799690944918,
+            19.123082567224014
+          ],
+          "covariance_coverage90": [
+            0.8,
+            0.9,
+            0.76
+          ],
+          "extremal_coefficient_ise": 0.0004711593678777083,
+          "extremal_coefficient_rmse": 0.021706205745770223
+        }
+      ]
+    },
+    {
+      "truth_label": "high",
+      "truth_u": [
+        0.75,
+        0.75,
+        0.75
+      ],
+      "truth_covariance": [
+        471.3471699409359,
+        199.07081839552737,
+        261.99757352745445
+      ],
+      "methods": [
+        {
+          "method": "Raw-data NPE",
+          "n_datasets": 100,
+          "covariance_mse_by_parameter": [
+            16812.486998452638,
+            16514.83182585382,
+            5022.184124706788
+          ],
+          "covariance_sum_mse": 38349.502949013244,
+          "covariance_mean_posterior_sd": [
+            78.13226148841895,
+            53.31229100085532,
+            43.529921633127216
+          ],
+          "covariance_coverage90": [
+            0.96,
+            0.0,
+            1.0
+          ],
+          "extremal_coefficient_ise": 0.002865754950485453,
+          "extremal_coefficient_rmse": 0.05353274652477166
+        },
+        {
+          "method": "Raw-data FSM",
+          "n_datasets": 100,
+          "covariance_mse_by_parameter": [
+            1370.3050430595479,
+            519.2054317139746,
+            361.60435451341846
+          ],
+          "covariance_sum_mse": 2251.114829286941,
+          "covariance_mean_posterior_sd": [
+            35.95296703659395,
+            20.75648134897705,
+            20.988154417971362
+          ],
+          "covariance_coverage90": [
+            0.92,
+            0.87,
+            0.93
+          ],
+          "extremal_coefficient_ise": 0.00021454291125201842,
+          "extremal_coefficient_rmse": 0.014647283408605789
+        }
+      ]
+    }
+  ]
+}

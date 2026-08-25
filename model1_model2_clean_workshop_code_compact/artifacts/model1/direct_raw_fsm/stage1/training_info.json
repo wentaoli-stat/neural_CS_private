@@ -1,0 +1,9 @@
+{
+  "best_step": 1700,
+  "best_source": "raw",
+  "best_val_loss": 23.63830712890625,
+  "stopped_step": 20000,
+  "fixed_final_step": 20000,
+  "fixed_final_source": "ema",
+  "trainable_parameters": 29953
+}

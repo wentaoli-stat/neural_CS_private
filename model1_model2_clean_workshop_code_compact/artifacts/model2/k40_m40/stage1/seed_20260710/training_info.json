@@ -1,0 +1,56 @@
+{
+  "linear": {
+    "best_step": 19800,
+    "best_val_loss": 40.61144055175781,
+    "best_source": "raw",
+    "stopped_step": 20000,
+    "lr_schedule": "constant",
+    "lr_decay_start_step": 10000,
+    "lr_min_ratio": 0.1,
+    "final_learning_rates": {
+      "lr_model": 0.0001,
+      "lr_gate": "",
+      "lr_rho": ""
+    },
+    "milestone_steps_saved": [
+      10000,
+      15000,
+      20000
+    ],
+    "minibatch_seed": 20290711,
+    "minibatch_indices_sha256": "9eb6ee45b7b147bc43d2566c38b20abafcb71a1320579a3217031e044dc9d65d",
+    "minibatch_rows_drawn": 10240000,
+    "method": "linear",
+    "label": "linear CS beta-conditioned DeepSets FSM",
+    "initial_state_sha256": "d226dde05b6cea48f253d16aa132c5cd2caf70ce388fc71e8137f6a106b0beae"
+  },
+  "shared_radial": {
+    "best_step": 18600,
+    "best_val_loss": 40.48123425292969,
+    "best_source": "raw",
+    "stopped_step": 20000,
+    "lr_schedule": "constant",
+    "lr_decay_start_step": 10000,
+    "lr_min_ratio": 0.1,
+    "final_learning_rates": {
+      "lr_model": "",
+      "lr_gate": 0.0001,
+      "lr_rho": 0.0001
+    },
+    "milestone_steps_saved": [
+      10000,
+      15000,
+      20000
+    ],
+    "minibatch_seed": 20290711,
+    "minibatch_indices_sha256": "9eb6ee45b7b147bc43d2566c38b20abafcb71a1320579a3217031e044dc9d65d",
+    "minibatch_rows_drawn": 10240000,
+    "method": "shared_radial",
+    "label": "shared-raw-gate CS beta-conditioned gate+DeepSets FSM [matched_random]",
+    "initial_state_sha256": "bd43f7b510e3dcb643a229b540f9ae8c63c041be9662f9a3990122692c55b19a",
+    "initialization": "matched_random",
+    "gate_sharing": "shared",
+    "gate_input_scale": "raw_local_score",
+    "nested_initialization_max_abs_diff": 9.5367431640625e-07
+  }
+}

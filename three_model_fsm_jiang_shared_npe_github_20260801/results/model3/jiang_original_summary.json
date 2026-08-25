@@ -1,0 +1,72 @@
+{
+  "p_true": 0.94,
+  "round1": {
+    "p_hat": 0.9899999499320984,
+    "absolute_error": 0.04999994993209844,
+    "root": {
+      "p_hat": 0.9899999499320984,
+      "scaled_score_sum": -484.583251953125,
+      "normalized_score_abs": 4.845832347869873,
+      "iterations": 2999,
+      "attempts": 10,
+      "step_converged": false,
+      "score_converged": false,
+      "at_lower_bound": false,
+      "at_upper_bound": true
+    },
+    "normal_intervals": {
+      "Cov_ss": {
+        "lower": 0.9619201695392648,
+        "upper": 1.018079730324932,
+        "width": 0.056159560785667174
+      },
+      "Cov_curv": {
+        "lower": 0.956456625624244,
+        "upper": 1.0235432742399528,
+        "width": 0.06708664861570875
+      },
+      "Cov_sand": {
+        "lower": 0.9499300280922164,
+        "upper": 1.0300698717719805,
+        "width": 0.08013984367976408
+      }
+    },
+    "mean_score_std_mse": 0.797573288654009,
+    "mean_score_corr": 0.48184777811266466
+  },
+  "round2": {
+    "p_hat": 0.9889369606971741,
+    "absolute_error": 0.048936960697174126,
+    "root": {
+      "p_hat": 0.9889369606971741,
+      "scaled_score_sum": -0.0008034706115722656,
+      "normalized_score_abs": 8.034706297621597e-06,
+      "iterations": 24,
+      "attempts": 1,
+      "step_converged": true,
+      "score_converged": true,
+      "at_lower_bound": false,
+      "at_upper_bound": false
+    },
+    "normal_intervals": {
+      "Cov_ss": {
+        "lower": 0.8883996589468804,
+        "upper": 1.0894742624474676,
+        "width": 0.20107460350058717
+      },
+      "Cov_curv": {
+        "lower": 0.8570478266718007,
+        "upper": 1.1208260947225475,
+        "width": 0.26377826805074683
+      },
+      "Cov_sand": {
+        "lower": 0.8159191516737474,
+        "upper": 1.1619547697206007,
+        "width": 0.34603561804685334
+      }
+    },
+    "mean_score_std_mse": 0.993358106604589,
+    "mean_score_corr": 0.09935043521146235
+  },
+  "warning": "one observed dataset does not estimate frequentist coverage"
+}

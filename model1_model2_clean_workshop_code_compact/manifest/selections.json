@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "generated_on": "2026-08-18",
+  "model1": {
+    "protocol": {
+      "n_blocks": 20,
+      "block_size": 20,
+      "tau": 0.5,
+      "sigma_q": 0.2,
+      "training_seed": 20260709,
+      "stage1_checkpoint_policy": "validation-best raw"
+    },
+    "linear": {
+      "path": "artifacts/model1/stage1/linear_validation_best/model_linear.pt",
+      "sha256": "92140d67cc17d3827e65f279a6248b15604cd697435b7fde0dc8fc49dc58e488",
+      "step": 12100,
+      "source": "raw"
+    },
+    "nonlinear": {
+      "method": "radial",
+      "initialization": "matched_random",
+      "path": "artifacts/model1/stage1/radial_matched_validation_best/model_radial.pt",
+      "sha256": "5c6a4a1b7857c7fc2394daff10fe010e50d161ba61bc1319eadb3f2205e3a614",
+      "step": 9800,
+      "source": "raw"
+    },
+    "shared_feature_stats_sha256": "ef0303254731f1bd57088e5847b49976a058bf5f4da173a53bdef0b4e37dea35"
+  },
+  "model2": {
+    "protocol": {
+      "n_blocks": 40,
+      "block_size": 40,
+      "tau": 1.0,
+      "sigma_q": 0.15,
+      "training_seeds": [20260709, 20260710],
+      "stage2_stage1_seed": 20260709
+    },
+    "seed_20260709": {
+      "fixed20k_ema": {
+        "linear_path": "artifacts/model2/k40_m40/stage1/seed_20260709/milestones/model_linear_step20000_ema.pt",
+        "linear_sha256": "aa9fdb39cee47132efd8e20ea3945efc91935549fa142815679c724b634c1280",
+        "shared_path": "artifacts/model2/k40_m40/stage1/seed_20260709/milestones/model_shared_radial_step20000_ema.pt",
+        "shared_sha256": "bf4c7601626958988fbc2229a46f263a3d389e473f02d385561f48fa8f3a2a4a"
+      },
+      "validation_best": {
+        "linear_path": "artifacts/model2/k40_m40/stage1/seed_20260709/model_linear.pt",
+        "linear_sha256": "52b4a44ea5b8360d0c35b9cbf7e1c3b5af9e77e47420e34d721c0eb7b033ea02",
+        "linear_step": 19700,
+        "shared_path": "artifacts/model2/k40_m40/stage1/seed_20260709/model_shared_radial.pt",
+        "shared_sha256": "cf22a87dfce70dcec62f99de1fc6ef99e2a02f86f6f9b25b9551653a33ee248a",
+        "shared_step": 16000
+      }
+    },
+    "seed_20260710": {
+      "fixed20k_ema": {
+        "linear_path": "artifacts/model2/k40_m40/stage1/seed_20260710/milestones/model_linear_step20000_ema.pt",
+        "linear_sha256": "89fac46bb6ee93655fe7a7bea1f3183645c3028f4528d7ca1ae673a5c2428cdf",
+        "shared_path": "artifacts/model2/k40_m40/stage1/seed_20260710/milestones/model_shared_radial_step20000_ema.pt",
+        "shared_sha256": "8a4007baf20bf99e5ff06db04f21536b150fbf347cb07bf8afa7d0c76b6a8136"
+      }
+    }
+  }
+}

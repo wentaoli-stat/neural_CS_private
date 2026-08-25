@@ -1,0 +1,18 @@
+{
+  "linear": {
+    "best_step": 12100,
+    "best_val_loss": 22.90335205078125,
+    "best_source": "raw",
+    "stopped_step": 20000,
+    "lr_schedule": "cosine_tail",
+    "lr_decay_start_step": 10000,
+    "lr_min_ratio": 0.1,
+    "final_learning_rates": {
+      "lr_model": 0.00001,
+      "lr_gate": "",
+      "lr_rho": ""
+    },
+    "method": "linear",
+    "label": "linear CS beta-conditioned DeepSets FSM"
+  }
+}

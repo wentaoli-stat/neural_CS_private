@@ -1,0 +1,2 @@
+run_dir,checkpoint,checkpoint_sha256,model,method,selection,checkpoint_source,checkpoint_step,n_blocks,block_size,tau,sigma_q,pi_min,pi_max,finite,block_permutation_max_abs_error,within_block_permutation_max_abs_error,passed
+/root/autodl-tmp/raw_fsm_20260819/model2_stage1,/root/autodl-tmp/raw_fsm_20260819/model2_stage1/model_raw_block_fsm.pt,90bdcfe789ef0f96cad3702bba1aea56490225ae17e49df2e19a9075f885e4c9,model2,raw_block_fsm,validation_best,raw,19700,40,40,1.0,0.15,0.05,0.7,True,2.384185791015625e-07,3.5762786865234375e-07,True

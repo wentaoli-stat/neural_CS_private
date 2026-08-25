@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "maxstable-rainfall79-10k"
+version = "1.0.0"
+description = "Selected 47x79 Smith max-stable Linear versus Positive(s,anchor) experiment"
+requires-python = ">=3.11"
+dependencies = ["jax", "numpy", "rpy2", "scipy", "torch"]
+
+[project.optional-dependencies]
+npe = ["sbi"]
+test = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["code/src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["code/src", "code/runners"]
+testpaths = ["tests"]
+

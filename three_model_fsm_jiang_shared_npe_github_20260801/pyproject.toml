@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "three-model-fsm-jiang-shared-npe"
+version = "0.1.0"
+description = "Three-model comparison of linear/nonlinear Direct-FSM and Jiang R1 with a shared NPE."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "matplotlib>=3.7",
+  "numpy>=1.24",
+  "pandas>=2.0",
+  "scipy>=1.10",
+  "torch>=2.1",
+]
+
+[project.optional-dependencies]
+npe = ["sbi>=0.23"]
+test = ["pytest>=7.4"]
+
+[project.scripts]
+jiang-block-model = "khoo_vs_jiang.block_mixture_jiang:main"
+shared-npe-block-model = "khoo_vs_jiang.block_mixture_stage2_npe:main"
+train-model3-fsm = "khoo_vs_jiang.nonlinear_emission_screen:main"
+shared-npe-model3 = "khoo_vs_jiang.nonlinear_emission_stage2:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+py-modules = ["shared_npe_backend"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+pythonpath = ["src"]

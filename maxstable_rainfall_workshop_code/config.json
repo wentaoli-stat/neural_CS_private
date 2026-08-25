@@ -1,0 +1,47 @@
+{
+  "protocol": "rainfall79_10k_linear_positive_anchor_v1",
+  "data_shape": [47, 79],
+  "inferred_parameters": ["Sigma_11", "Sigma_12", "Sigma_22"],
+  "normalized_parameter_support": [0.15, 0.85],
+  "stage1": {
+    "n_train_used": 10000,
+    "n_validation": 8000,
+    "source_train_bank": 40000,
+    "sigma_q": 0.2,
+    "all_pair_count": 3081,
+    "distance_bins": 20,
+    "methods": ["linear", "positive_anchor"],
+    "iterations": 10000,
+    "formal_batch_size": 128,
+    "pair_microbatch_size": 32,
+    "hidden": 64,
+    "depth": 2,
+    "gate_hidden": 16,
+    "learning_rate": 0.0001,
+    "weight_decay": 0.001,
+    "gradient_clip": 5.0,
+    "ema_decay": 0.995,
+    "primary_checkpoint": "fixed-final EMA",
+    "training_seed": 20260819
+  },
+  "stage2": {
+    "n_train": 10000,
+    "n_prior_wide_test": 100,
+    "pilot_pairs_per_distance_bin": 25,
+    "pilot_total_pairs": 500,
+    "pilot_iterations": 12,
+    "pilot_starts": 15,
+    "pilot_refine_starts": 3,
+    "context": "(rough_mple_pilot_w[3], frozen_stage1_score_at_pilot[3])",
+    "npe": "MDN",
+    "npe_hidden": 64,
+    "npe_components": 8,
+    "npe_seed": 54000,
+    "posterior_samples_per_test": 5000
+  },
+  "fixed_truth_test": {
+    "truths": [[0.25, 0.25, 0.25], [0.5, 0.5, 0.5], [0.75, 0.75, 0.75]],
+    "datasets_per_truth": 100
+  }
+}
+

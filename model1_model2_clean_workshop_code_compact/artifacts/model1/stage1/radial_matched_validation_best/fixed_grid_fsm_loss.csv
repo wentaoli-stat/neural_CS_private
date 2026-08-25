@@ -1,0 +1,10 @@
+method,pi,n,sigma_q,target_variance,fsm_mse,fsm_relative_mse
+radial CS beta-conditioned gate+DeepSets FSM [matched_random],0.07,1000,0.2,24.999999999999996,22.963871002197266,0.9185548400878908
+radial CS beta-conditioned gate+DeepSets FSM [matched_random],0.1,1000,0.2,24.999999999999996,24.284820556640625,0.9713928222656252
+radial CS beta-conditioned gate+DeepSets FSM [matched_random],0.2,1000,0.2,24.999999999999996,24.154617309570312,0.9661846923828127
+radial CS beta-conditioned gate+DeepSets FSM [matched_random],0.3,1000,0.2,24.999999999999996,24.050031661987305,0.9620012664794924
+radial CS beta-conditioned gate+DeepSets FSM [matched_random],0.4,1000,0.2,24.999999999999996,22.500526428222656,0.9000210571289063
+radial CS beta-conditioned gate+DeepSets FSM [matched_random],0.5,1000,0.2,24.999999999999996,22.657623291015625,0.9063049316406251
+radial CS beta-conditioned gate+DeepSets FSM [matched_random],0.6,1000,0.2,24.999999999999996,22.205299377441406,0.8882119750976564
+radial CS beta-conditioned gate+DeepSets FSM [matched_random],0.65,1000,0.2,24.999999999999996,23.782133102416992,0.9512853240966799
+radial CS beta-conditioned gate+DeepSets FSM [matched_random],0.68,1000,0.2,24.999999999999996,22.18990707397461,0.8875962829589845

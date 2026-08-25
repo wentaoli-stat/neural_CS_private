@@ -1,0 +1,140 @@
+{
+  "model1": {
+    "score": {
+      "fsm_linear": {
+        "mean_std_mse": 0.09777618219123585,
+        "mean_corr": 0.9583703130926715,
+        "n_rows": 20
+      },
+      "fsm_radial": {
+        "mean_std_mse": 0.08469598069632647,
+        "mean_corr": 0.9652484804136675,
+        "n_rows": 20
+      },
+      "jiang_round1": {
+        "mean_std_mse": 0.40350332033612835,
+        "mean_corr": 0.88576754255674,
+        "n_rows": 4
+      },
+      "jiang_round2_local": {
+        "mean_std_mse": 0.2326580540504828,
+        "mean_corr": 0.8901357813909203,
+        "n_rows": 4
+      }
+    },
+    "root": {
+      "fsm_linear": {
+        "mean_rmse_to_true": 0.14231518943660734,
+        "mean_rmse_to_exact_mle": 0.03404956757011707,
+        "mean_boundary_rate": 0.012,
+        "mean_paired_win_rate_vs_jiang": 0.67,
+        "n_training_seeds": 5
+      },
+      "fsm_radial": {
+        "mean_rmse_to_true": 0.14002485629167594,
+        "mean_rmse_to_exact_mle": 0.030415680893978746,
+        "mean_boundary_rate": 0.006,
+        "mean_paired_win_rate_vs_jiang": 0.6940000000000001,
+        "n_training_seeds": 5
+      },
+      "jiang_round1": {
+        "mean_rmse_to_true": 0.14684381772116176,
+        "mean_rmse_to_exact_mle": 0.056864215688732414,
+        "mean_boundary_rate": 0.05,
+        "mean_paired_win_rate_vs_jiang": null,
+        "n_training_seeds": 1
+      }
+    },
+    "fixed_observed": {
+      "fsm_linear": {
+        "mean_p_hat": 0.32531240564109476,
+        "mean_absolute_error_to_exact_mle": 0.03779266555996789,
+        "n_training_seeds": 5
+      },
+      "fsm_radial": {
+        "mean_p_hat": 0.3307926792982266,
+        "mean_absolute_error_to_exact_mle": 0.03231239190283609,
+        "n_training_seeds": 5
+      },
+      "jiang_round1": {
+        "p_hat": 0.35451793670654297,
+        "absolute_error_to_exact_mle": 0.0085871344945197,
+        "n_training_seeds": 1
+      },
+      "jiang_round2_local": {
+        "p_hat": 0.3743709325790405,
+        "absolute_error_to_exact_mle": 0.01126586137797786,
+        "n_training_seeds": 1
+      }
+    }
+  },
+  "model2": {
+    "score": {
+      "fsm_linear": {
+        "mean_std_mse": 0.1520512753701924,
+        "mean_corr": 0.9342768738393101,
+        "n_rows": 20
+      },
+      "fsm_radial": {
+        "mean_std_mse": 0.11402717885111555,
+        "mean_corr": 0.9478426188250119,
+        "n_rows": 20
+      },
+      "jiang_round1": {
+        "mean_std_mse": 0.4541244326194292,
+        "mean_corr": 0.863961567617161,
+        "n_rows": 4
+      },
+      "jiang_round2_local": {
+        "mean_std_mse": 0.3699981114444021,
+        "mean_corr": 0.88941187300198,
+        "n_rows": 4
+      }
+    },
+    "root": {
+      "fsm_linear": {
+        "mean_rmse_to_true": 0.11425225506707637,
+        "mean_rmse_to_exact_mle": 0.027843389000437223,
+        "mean_boundary_rate": 0.008,
+        "mean_paired_win_rate_vs_jiang": 0.668,
+        "n_training_seeds": 5
+      },
+      "fsm_radial": {
+        "mean_rmse_to_true": 0.11501087276542218,
+        "mean_rmse_to_exact_mle": 0.023473444585454098,
+        "mean_boundary_rate": 0.004,
+        "mean_paired_win_rate_vs_jiang": 0.74,
+        "n_training_seeds": 5
+      },
+      "jiang_round1": {
+        "mean_rmse_to_true": 0.11980217532465404,
+        "mean_rmse_to_exact_mle": 0.048915258781438355,
+        "mean_boundary_rate": 0.01,
+        "mean_paired_win_rate_vs_jiang": null,
+        "n_training_seeds": 1
+      }
+    },
+    "fixed_observed": {
+      "fsm_linear": {
+        "mean_p_hat": 0.5607068066175358,
+        "mean_absolute_error_to_exact_mle": 0.010998505802028703,
+        "n_training_seeds": 5
+      },
+      "fsm_radial": {
+        "mean_p_hat": 0.5702114934029776,
+        "mean_absolute_error_to_exact_mle": 0.02013772037911903,
+        "n_training_seeds": 5
+      },
+      "jiang_round1": {
+        "p_hat": 0.5032253265380859,
+        "absolute_error_to_exact_mle": 0.04684844648577269,
+        "n_training_seeds": 1
+      },
+      "jiang_round2_local": {
+        "p_hat": 0.5515902042388916,
+        "absolute_error_to_exact_mle": 0.0015164312150329762,
+        "n_training_seeds": 1
+      }
+    }
+  }
+}

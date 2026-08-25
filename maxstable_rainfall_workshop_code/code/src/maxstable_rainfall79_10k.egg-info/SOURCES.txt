@@ -1,0 +1,11 @@
+README.md
+pyproject.toml
+code/src/maxstable_rainfall79/__init__.py
+code/src/maxstable_rainfall79/core.py
+code/src/maxstable_rainfall79/support.py
+code/src/maxstable_rainfall79_10k.egg-info/PKG-INFO
+code/src/maxstable_rainfall79_10k.egg-info/SOURCES.txt
+code/src/maxstable_rainfall79_10k.egg-info/dependency_links.txt
+code/src/maxstable_rainfall79_10k.egg-info/requires.txt
+code/src/maxstable_rainfall79_10k.egg-info/top_level.txt
+tests/test_selected_protocol.py

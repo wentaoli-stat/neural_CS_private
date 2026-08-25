@@ -1,0 +1,4 @@
+model,jiang_r1,ours_linear,ours_nonlinear
+model1,0.4035,0.0978,0.0847
+model2,0.4541,0.1521,0.1140
+model3,0.7976,0.2113,0.1549

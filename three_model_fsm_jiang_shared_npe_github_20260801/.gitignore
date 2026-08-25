@@ -1,0 +1,28 @@
+.DS_Store
+.idea/
+.vscode/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# Regenerated experiment products and large weights.
+runs/
+artifacts/checkpoints/**
+!artifacts/checkpoints/README.md
+*.pt
+*.pth
+*.ckpt
+*.npy
+*.npz
+*.pkl
+*.pickle
+*.tar
+*.tar.gz
+
+# The exact external checkout is installed separately.
+external/Structured_Score_Matching/

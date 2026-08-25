@@ -1,0 +1,4 @@
+model,jiang_r1_shared_npe,ours_linear_shared_npe,ours_nonlinear_shared_npe
+model1,0.03014,0.01642,0.01482
+model2,0.03272,0.02534,0.02189
+model3,0.01426,0.01213,0.01005

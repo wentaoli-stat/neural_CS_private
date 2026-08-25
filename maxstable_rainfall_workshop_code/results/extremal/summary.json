@@ -1,0 +1,376 @@
+{
+  "protocol": {
+    "stage1_checkpoint": "/root/autodl-tmp/maxstable_fair_v2_single_seed_20260819/stage1_positive_anchor_seed20260819/stage1_fixed_final_ema.pt",
+    "linear_stage2_dir": "/root/autodl-tmp/maxstable_fair_v2_single_seed_20260819/stage2_fixed_ema_10k100",
+    "linear_npe_index": 1,
+    "positive_stage2_dir": "/root/autodl-tmp/maxstable_fair_v2_single_seed_20260819/stage2_positive_anchor_rough500_fixed_ema_10k100",
+    "positive_npe_index": 0,
+    "linear_label": "Linear",
+    "positive_label": "Positive(s,w_a)",
+    "posterior_n": 5000,
+    "posterior_seed": 97000,
+    "n_radii": 12,
+    "n_angles": 8,
+    "methods_share_saved_test_contexts": true,
+    "no_stage1_or_stage2_retraining": true
+  },
+  "truths": [
+    {
+      "truth_index": 0,
+      "truth_label": "low",
+      "truth_u": [
+        0.25,
+        0.25,
+        0.25
+      ],
+      "truth_covariance": [
+        234.0640775763408,
+        -10.052372427314284,
+        130.1041446427431
+      ],
+      "truth_orientation_degrees": 174.52736010821778,
+      "truth_axis_ratio": 1.3490463335386946,
+      "n_datasets": 100,
+      "methods": [
+        {
+          "method": "Linear",
+          "n_datasets": 100,
+          "delta_integrated_mse": 6.974767696406565e-05,
+          "delta_integrated_rmse": 0.008351507466563485,
+          "delta_integrated_mae": 0.005676170849960464,
+          "delta_pointwise_coverage95": 0.97,
+          "delta_mean_width95": 0.033988308126737955,
+          "orientation_bias_degrees": -1.084765727324505,
+          "orientation_mae_degrees": 2.7116137022459013,
+          "orientation_rmse_degrees": 3.2907000887412035,
+          "orientation_coverage95": 0.98,
+          "axis_ratio_bias": 0.015651816067510642,
+          "axis_ratio_rmse": 0.046683683074706675,
+          "axis_ratio_coverage95": 1.0
+        },
+        {
+          "method": "Positive(s,w_a)",
+          "n_datasets": 100,
+          "delta_integrated_mse": 5.8374335277774816e-05,
+          "delta_integrated_rmse": 0.0076403098940929625,
+          "delta_integrated_mae": 0.005354427483374997,
+          "delta_pointwise_coverage95": 0.9875,
+          "delta_mean_width95": 0.0340791695302194,
+          "orientation_bias_degrees": -1.1876089567897004,
+          "orientation_mae_degrees": 2.6353777261179654,
+          "orientation_rmse_degrees": 3.225348610283379,
+          "orientation_coverage95": 1.0,
+          "axis_ratio_bias": 0.01816967726832877,
+          "axis_ratio_rmse": 0.046904482935780735,
+          "axis_ratio_coverage95": 1.0
+        }
+      ],
+      "paired": {
+        "comparison": "Linear minus Positive(s,w_a)",
+        "delta_integrated_squared_error": {
+          "metric": "delta_integrated_squared_error",
+          "n_paired_datasets": 100,
+          "linear_mean": 6.974767696406565e-05,
+          "positive_mean": 5.8374335277774816e-05,
+          "relative_reduction_percent": 16.306409304714816,
+          "mean_paired_difference": 1.1373341686290836e-05,
+          "paired_bootstrap_95_interval": [
+            3.360822544670224e-06,
+            1.998524944969317e-05
+          ],
+          "positive_lower_error_fraction": 0.5
+        },
+        "orientation_squared_error": {
+          "metric": "orientation_squared_error",
+          "n_paired_datasets": 100,
+          "linear_mean": 10.828707074041363,
+          "positive_mean": 10.402873657856922,
+          "relative_reduction_percent": 3.9324493060233463,
+          "mean_paired_difference": 0.42583341618444237,
+          "paired_bootstrap_95_interval": [
+            -0.9670222138718143,
+            1.854028702995132
+          ],
+          "positive_lower_error_fraction": 0.55
+        },
+        "axis_ratio_squared_error": {
+          "metric": "axis_ratio_squared_error",
+          "n_paired_datasets": 100,
+          "linear_mean": 0.0021793662654196544,
+          "positive_mean": 0.002200030519472946,
+          "relative_reduction_percent": -0.9481772009218679,
+          "mean_paired_difference": -2.0664254053291832e-05,
+          "paired_bootstrap_95_interval": [
+            -0.00029498857559781495,
+            0.00024866074677428124
+          ],
+          "positive_lower_error_fraction": 0.47
+        }
+      }
+    },
+    {
+      "truth_index": 1,
+      "truth_label": "center",
+      "truth_u": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "truth_covariance": [
+        332.15273677999994,
+        70.39821371,
+        184.62656960000004
+      ],
+      "truth_orientation_degrees": 21.83145079006464,
+      "truth_axis_ratio": 1.517794081634397,
+      "n_datasets": 100,
+      "methods": [
+        {
+          "method": "Linear",
+          "n_datasets": 100,
+          "delta_integrated_mse": 0.00014115626835801916,
+          "delta_integrated_rmse": 0.011880920349788528,
+          "delta_integrated_mae": 0.008356924915877716,
+          "delta_pointwise_coverage95": 0.93875,
+          "delta_mean_width95": 0.03759614903421675,
+          "orientation_bias_degrees": -0.053792337499648735,
+          "orientation_mae_degrees": 2.1388913379296737,
+          "orientation_rmse_degrees": 2.7381964575208,
+          "orientation_coverage95": 0.98,
+          "axis_ratio_bias": 0.012637626394197425,
+          "axis_ratio_rmse": 0.07707629993803781,
+          "axis_ratio_coverage95": 0.89
+        },
+        {
+          "method": "Positive(s,w_a)",
+          "n_datasets": 100,
+          "delta_integrated_mse": 0.00012141911607731556,
+          "delta_integrated_rmse": 0.011019034262462186,
+          "delta_integrated_mae": 0.007299604053072618,
+          "delta_pointwise_coverage95": 0.94125,
+          "delta_mean_width95": 0.034686152660039715,
+          "orientation_bias_degrees": 0.022692854378253413,
+          "orientation_mae_degrees": 2.0935060865788566,
+          "orientation_rmse_degrees": 2.7354934363479706,
+          "orientation_coverage95": 0.96,
+          "axis_ratio_bias": 0.00801695154071953,
+          "axis_ratio_rmse": 0.07552401909567834,
+          "axis_ratio_coverage95": 0.89
+        }
+      ],
+      "paired": {
+        "comparison": "Linear minus Positive(s,w_a)",
+        "delta_integrated_squared_error": {
+          "metric": "delta_integrated_squared_error",
+          "n_paired_datasets": 100,
+          "linear_mean": 0.00014115626835801916,
+          "positive_mean": 0.00012141911607731556,
+          "relative_reduction_percent": 13.982483746767535,
+          "mean_paired_difference": 1.9737152280703595e-05,
+          "paired_bootstrap_95_interval": [
+            6.927405614638495e-06,
+            3.3135475704027365e-05
+          ],
+          "positive_lower_error_fraction": 0.56
+        },
+        "orientation_squared_error": {
+          "metric": "orientation_squared_error",
+          "n_paired_datasets": 100,
+          "linear_mean": 7.49771983997946,
+          "positive_mean": 7.482924340302828,
+          "relative_reduction_percent": 0.19733332256213637,
+          "mean_paired_difference": 0.014795499676632469,
+          "paired_bootstrap_95_interval": [
+            -1.2255862857538462,
+            1.1983315382244075
+          ],
+          "positive_lower_error_fraction": 0.5
+        },
+        "axis_ratio_squared_error": {
+          "metric": "axis_ratio_squared_error",
+          "n_paired_datasets": 100,
+          "linear_mean": 0.005940756012138369,
+          "positive_mean": 0.005703877460364386,
+          "relative_reduction_percent": 3.987346918304401,
+          "mean_paired_difference": 0.00023687855177398308,
+          "paired_bootstrap_95_interval": [
+            -0.0005528237359151634,
+            0.0010268490701708113
+          ],
+          "positive_lower_error_fraction": 0.48
+        }
+      }
+    },
+    {
+      "truth_index": 2,
+      "truth_label": "high",
+      "truth_u": [
+        0.75,
+        0.75,
+        0.75
+      ],
+      "truth_covariance": [
+        471.3471699409359,
+        199.07081839552737,
+        261.99757352745445
+      ],
+      "truth_orientation_degrees": 31.13192415683694,
+      "truth_axis_ratio": 2.0428357148408653,
+      "n_datasets": 100,
+      "methods": [
+        {
+          "method": "Linear",
+          "n_datasets": 100,
+          "delta_integrated_mse": 0.0001234813340870339,
+          "delta_integrated_rmse": 0.011112215534583277,
+          "delta_integrated_mae": 0.007923903064082206,
+          "delta_pointwise_coverage95": 0.975,
+          "delta_mean_width95": 0.043942071838625314,
+          "orientation_bias_degrees": -0.3914984111243487,
+          "orientation_mae_degrees": 1.4920673242250233,
+          "orientation_rmse_degrees": 1.7765611224481554,
+          "orientation_coverage95": 0.97,
+          "axis_ratio_bias": 0.005624126162132963,
+          "axis_ratio_rmse": 0.08563894468733464,
+          "axis_ratio_coverage95": 0.96
+        },
+        {
+          "method": "Positive(s,w_a)",
+          "n_datasets": 100,
+          "delta_integrated_mse": 0.00010100260612861099,
+          "delta_integrated_rmse": 0.010050005280029011,
+          "delta_integrated_mae": 0.007292459289887279,
+          "delta_pointwise_coverage95": 0.9775,
+          "delta_mean_width95": 0.04158265481438476,
+          "orientation_bias_degrees": -0.2134950590004911,
+          "orientation_mae_degrees": 1.2499414164988678,
+          "orientation_rmse_degrees": 1.56691673989249,
+          "orientation_coverage95": 0.98,
+          "axis_ratio_bias": 0.0023861142502902568,
+          "axis_ratio_rmse": 0.0781336034917237,
+          "axis_ratio_coverage95": 0.99
+        }
+      ],
+      "paired": {
+        "comparison": "Linear minus Positive(s,w_a)",
+        "delta_integrated_squared_error": {
+          "metric": "delta_integrated_squared_error",
+          "n_paired_datasets": 100,
+          "linear_mean": 0.0001234813340870339,
+          "positive_mean": 0.00010100260612861099,
+          "relative_reduction_percent": 18.20415055005734,
+          "mean_paired_difference": 2.2478727958422932e-05,
+          "paired_bootstrap_95_interval": [
+            9.776817673376642e-06,
+            3.5947748201030205e-05
+          ],
+          "positive_lower_error_fraction": 0.6
+        },
+        "orientation_squared_error": {
+          "metric": "orientation_squared_error",
+          "n_paired_datasets": 100,
+          "linear_mean": 3.15616942179425,
+          "positive_mean": 2.4552280697553086,
+          "relative_reduction_percent": 22.208609816657543,
+          "mean_paired_difference": 0.7009413520389416,
+          "paired_bootstrap_95_interval": [
+            0.3188416994928279,
+            1.0894265730570365
+          ],
+          "positive_lower_error_fraction": 0.65
+        },
+        "axis_ratio_squared_error": {
+          "metric": "axis_ratio_squared_error",
+          "n_paired_datasets": 100,
+          "linear_mean": 0.007334028847160361,
+          "positive_mean": 0.006104859994601899,
+          "relative_reduction_percent": 16.75980389734055,
+          "mean_paired_difference": 0.0012291688525584612,
+          "paired_bootstrap_95_interval": [
+            -2.0437540882344184e-05,
+            0.0025720499862507203
+          ],
+          "positive_lower_error_fraction": 0.51
+        }
+      }
+    }
+  ],
+  "overall": {
+    "methods": [
+      {
+        "method": "Linear",
+        "n_datasets": 300,
+        "delta_integrated_mse": 0.00011146175980303957,
+        "delta_integrated_rmse": 0.010557545159886344,
+        "delta_integrated_mae": 0.00731899960997346,
+        "delta_pointwise_coverage95": 0.96125,
+        "delta_mean_width95": 0.03850884299986001,
+        "orientation_bias_degrees": -0.5100188253161675,
+        "orientation_mae_degrees": 2.114190788133533,
+        "orientation_rmse_degrees": 2.67597934320721,
+        "orientation_coverage95": 0.9766666666666667,
+        "axis_ratio_bias": 0.011304522874613676,
+        "axis_ratio_rmse": 0.07177314057667716,
+        "axis_ratio_coverage95": 0.95
+      },
+      {
+        "method": "Positive(s,w_a)",
+        "n_datasets": 300,
+        "delta_integrated_mse": 9.359868582790046e-05,
+        "delta_integrated_rmse": 0.009674641379808373,
+        "delta_integrated_mae": 0.006648830275444965,
+        "delta_pointwise_coverage95": 0.96875,
+        "delta_mean_width95": 0.03678265900154796,
+        "orientation_bias_degrees": -0.45947038713731264,
+        "orientation_mae_degrees": 1.99294174306523,
+        "orientation_rmse_degrees": 2.6039089889315163,
+        "orientation_coverage95": 0.98,
+        "axis_ratio_bias": 0.009524247686446184,
+        "axis_ratio_rmse": 0.06833439342536873,
+        "axis_ratio_coverage95": 0.96
+      }
+    ],
+    "paired": {
+      "comparison": "Linear minus Positive(s,w_a)",
+      "delta_integrated_squared_error": {
+        "metric": "delta_integrated_squared_error",
+        "n_paired_datasets": 300,
+        "linear_mean": 0.00011146175980303957,
+        "positive_mean": 9.359868582790047e-05,
+        "relative_reduction_percent": 16.026190512965478,
+        "mean_paired_difference": 1.7863073975139123e-05,
+        "paired_bootstrap_95_interval": [
+          1.1231458641488797e-05,
+          2.4799081227176763e-05
+        ],
+        "positive_lower_error_fraction": 0.5533333333333333
+      },
+      "orientation_squared_error": {
+        "metric": "orientation_squared_error",
+        "n_paired_datasets": 300,
+        "linear_mean": 7.160865445271693,
+        "positive_mean": 6.780342022638353,
+        "relative_reduction_percent": 5.31393063508265,
+        "mean_paired_difference": 0.38052342263333877,
+        "paired_bootstrap_95_interval": [
+          -0.2631317842623637,
+          1.0097840671898657
+        ],
+        "positive_lower_error_fraction": 0.5666666666666667
+      },
+      "axis_ratio_squared_error": {
+        "metric": "axis_ratio_squared_error",
+        "n_paired_datasets": 300,
+        "linear_mean": 0.005151383708239461,
+        "positive_mean": 0.0046695893248130775,
+        "relative_reduction_percent": 9.3527178465811,
+        "mean_paired_difference": 0.0004817943834263842,
+        "paired_bootstrap_95_interval": [
+          -2.4371126538157462e-05,
+          0.0010185621919638465
+        ],
+        "positive_lower_error_fraction": 0.4866666666666667
+      }
+    }
+  }
+}

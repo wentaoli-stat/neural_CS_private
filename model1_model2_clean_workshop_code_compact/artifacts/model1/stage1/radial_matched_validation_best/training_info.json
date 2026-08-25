@@ -1,0 +1,20 @@
+{
+  "radial": {
+    "best_step": 9800,
+    "best_val_loss": 22.87735241699219,
+    "best_source": "raw",
+    "stopped_step": 20000,
+    "lr_schedule": "cosine_tail",
+    "lr_decay_start_step": 10000,
+    "lr_min_ratio": 0.1,
+    "final_learning_rates": {
+      "lr_model": "",
+      "lr_gate": 1e-05,
+      "lr_rho": 1e-05
+    },
+    "method": "radial",
+    "label": "radial CS beta-conditioned gate+DeepSets FSM [matched_random]",
+    "initialization": "matched_random",
+    "nested_initialization_max_abs_diff": 2.384185791015625e-07
+  }
+}
