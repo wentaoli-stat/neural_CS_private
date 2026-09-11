@@ -1,0 +1,622 @@
+
+===== PAGE 1 =====
+Nonlinear Aggregation of Composite Sub-scores:
+The Godambe Gap and the Auxiliary-Parameter
+Problem
+Research note — theory and algorithms
+July 9, 2026
+Abstract
+This note consolidates the theoretical results and the algorithms they justify. Part I states
+the nonlinear Godambe gap: for non-exponential-family models the full Fisher score lies outside
+the closed linear span of marginal and pairwise sub-scores, so nonlinear aggregation strictly
+improves on every linear composite score — in the degrees-of-freedom direction, permanently
+and at order one. This is the load-bearing novelty claim; the gap closes in both degenerate
+limits (ν→∞ , ρ→ 0), and whether it is order-one in other parameter directions is model-
+dependent and left open. Part II resolves the auxiliary-parameter problem : the surrogate
+score must be evaluated at someβ, and amortized SBI forces β =bβ(X) to be data-dependent.
+A single translation identity, forced by Fisher consistency, yields (i) an impossibility result
+— no function of the score value alone can be first-order pilot-invariant without becoming
+ancillary — and (ii) a complete characterization: on the pair ( bβ,Sψ,ϕ(X,bβ)) the first-order
+pilot-invariant statistics are exactly the functions of the one-step estimatorbθ1. The degeneracy
+of Sψ,ϕ(X,bθ1), and the vanishing of the score at the estimating-equation root, are corollaries
+of the same identity. Part III separates validity from efficiency: in the SBI regime pilot error
+never threatens posterior validity, only sharpness, and the conditions the pilot must satisfy
+are tiered accordingly. Part IV derives the algorithms as consequences and maps each claim
+to an experiment.
+Status flags. Results marked [proved] are complete as stated. Results marked [to verify]
+require a model-specific computation that is sketched but not carried out here. Theorem 5
+is the principal [to verify] item and should be settled before drafting the paper, since the
+framing of everything else depends on whether it is a theorem or an empirical finding.
+1 Setup and notation
+Let X = (X1,...,X n)∼p(·| θ) with θ∈ Θ⊂ Rp and let
+g0(X;θ) =∇θ logp(X|θ)
+denote the full Fisher score, assumed unavailable or too expensive. Fix tractable marginal and
+pairwise densities p1,p 2 and define sub-scores
+cs1(Xi;β) =∇β logp1(Xi|β), cs2(Xi,Xj;β) =∇β logp2(Xi,Xj|β).
+1
+===== PAGE 2 =====
+With{(i,j ) : i < j} = Sd
+k=1Uk a partition into pair classes (lags, distance bins), define the
+aggregated features
+CS1(X;β,ϕ ) =
+nX
+i=1
+aϕ{cs1(Xi;β)}, CS2,k(X;β,ϕ ) =
+X
+(i,j)∈Uk
+bϕ,k{cs2(Xi,Xj;β)},
+stacked as Tϕ(X,β ) ={CS1, CS2,1,..., CS2,d}, and the surrogate score
+Sψ,ϕ(X,β ) =Sψ{Tϕ(X,β )}∈ Rp.
+Write the centered estimating function
+m(X,β ) = Sψ,ϕ(X,β )− Eβ{Sψ,ϕ(X,β )}, µ (θ,β ) = Eθ{m(X,β )},
+so that µ(θ,θ ) = 0 for all θ by construction. Sensitivity, variability and Godambe information at
+θ are
+H(θ) =∂θµ(θ,β )
+
+β=θ, V (θ) = Varθ{m(X,θ )}, G (θ) =H⊤V−1H.
+The one-step (Newton) estimator from a pilot bβ =bβ(X) is
+bθ1 = bβ +H(bβ)−1m(X,bβ), (1)
+andbθk denotes k iterations of (1) (Fisher scoring), with ˜θ the exact root m(X, ˜θ) = 0.
+Assumption 1 (Regularity). µ(θ,β ) is C2 in a neighbourhood of the diagonal; H(θ) is non-
+singular and continuous; V (θ)≻ 0; and n−1/2m(X,θ 0)⇝ N(0,V ) with the usual stochastic-
+equicontinuity conditions for a LAN expansion.
+Assumption 2 (Fisher consistency). µ(θ,θ ) = 0 for every θ∈ Θ.
+Assumption 2 is not an extra requirement: it holds by construction once Sψ,ϕ is centered, and
+is the defining property of a valid estimating function. Everything in Part II is a consequence of
+differentiating it.
+2 Part I: the nonlinear Godambe gap
+2.1 Linear aggregation and its ceiling
+A linear composite score is any estimating function of the form
+Slin(X;β,W ) =W1
+X
+i
+cs1(Xi;β) +
+dX
+k=1
+W2,k
+X
+(i,j)∈Uk
+cs2(Xi,Xj;β), (2)
+with W = (W1,W 2,1,...,W 2,d) fixed matrices. More generally — and this is the class the gap
+claim must be stated against, since it is the largest linear class — allow per-component weights
+(Lindsay-type weighting):
+L = span
+n
+v⊤cs1(Xi;θ0), v⊤cs2(Xi,Xj;θ0) : v∈ Rp, i<j
+o
+⊂ L2
+0(pθ0),
+with ΠL the L2 projection onto it. Under stationarity with lag-defined batches Uk, the optimal
+per-pair weights are constant within each lag class by exchangeability, so the batchwise class (2)
+attains the same ceiling; in general (2) is a sub-class. Stating the results for L makes “no linear
+combination of sub-scores” literal rather than restricted to the implemented batching.
+2
+===== PAGE 3 =====
+Proposition 1 (Linear ceiling; proved). For anyW ,G(Slin(·;W ))⪯Glin
+⋆ := supWG(Slin(·;W )),
+and
+Glin
+⋆ = E
+h
+ΠLg0 ΠLg⊤
+0
+i
+= I(θ0)− E
+h
+RR⊤
+i
+, R :=g0− ΠLg0.
+ConsequentlyGlin
+⋆ =I(θ0) if and only if g0∈L .
+Proof sketch. Godambe information of an estimating function is invariant to nonsingular linear
+reparametrization and is maximized, over any linear class, by the projection of the efficient score
+onto that class [Godambe, 1960, Heyde, 1997]. The Pythagorean identity in L2
+0 gives the residual
+decomposition. Optimality of W⋆ corresponds to M⋆ =V−1H in the variational identity tr(G) =
+maxM tr(2M⊤H−M⊤VM ).
+Proposition 1 converts the question “can nonlinear aggregation help?” into a purely geometric
+one: is the full score in the closed linear span of the sub-score aggregates? For exponential families
+it is, which is the content of the next statement and explains why the gap is invisible in the
+Gaussian testbed.
+Proposition 2 (Exponential-family collapse; proved). Supposep(x|θ) is a full-rank exponential
+family whose sufficient statistic is a sum of terms each depending on at most two coordinates of
+x, T (X) = P
+it1(Xi) +P
+i<jt2(Xi,Xj), and suppose the sub-score families span the sufficient-
+statistic components: t1 lies in the affine span of the coordinates of cs1(·;θ) and t2 in that of
+cs2(·,·;θ). Then g0∈L andGlin
+⋆ =I(θ0): nonlinear aggregation cannot improve on the best linear
+composite score.
+Proof. g0(X;θ) = ˙η(θ)⊤{T (X)− EθT (X)}. By the spanning hypothesis each summand of T
+is an affine function of a marginal or pairwise sub-score, hence g0∈L by closure under linear
+combination.
+Remark 3. The spanning hypothesis is verifiable and holds for the Gaussian testbeds (the marginal
+and pairwise scores of a Gaussian are quadratic forms spanning the corresponding sufficient statis-
+tics). It is a genuine hypothesis, not a formality: it is what ties the tractable working margins
+p1,p 2 to the true joint family.
+Remark 4 (Gaussian AR(1) as negative control) . Proposition 2 says that on Gaussian AR(1) the
+method should match, not beat, optimally-weighted linear composite likelihood. A method that
+beats the linear ceiling where the ceiling is tight is reporting noise. This makes the Gaussian
+experiment a falsification test, not a weak baseline.
+2.2 The gap for non-exponential families
+Theorem 5 (Nonlinear Godambe gap; to verify). LetX follow a Student-t AR(1) (or elliptical
+field) model with dispersion parameter ρ and degrees of freedom ν <∞, so that
+logp(X|θ) =c(θ)− ν+n
+2 log
+
+1 + Q(X;ρ)
+ν
+
+, Q (X;ρ) =X⊤Ω(ρ)X.
+Then for every ρ̸= 0 and ν <∞: g0 /∈L , and there exists κ(ρ,ν )> 0, independent of n, with
+lim inf
+n→∞
+e⊤
+ν n−1
+I(θ0)−Glin
+⋆
+	
+eν ≥ κ(ρ,ν ),
+where eν is the degrees-of-freedom direction. The ν-gap is therefore O(n) in total, i.e. order-one
+per observation, and does not vanish asymptotically. Both degenerate limits close the gap: κ→ 0
+as ν→∞ (Gaussian limit, Proposition 2) and as ρ→ 0 (factorization: the model becomes iid, g0
+reduces to a sum of marginal sub-scores, hence g0∈L ).
+3
+===== PAGE 4 =====
+Remark 6 (Scope of the direction claim) . The theorem is deliberately stated for the ν-direction
+only, where the log-of-sum nonlinearity makes the gap structurally irreducible. Whether the
+ρ-direction gap is also order-one is left open and expected to be model-dependent: AR(1) is
+structurally favourable to pairwise composite likelihood in ρ, whereas a 2D grid with bandwidth
+b≥ 2 produces a larger linear-vs-nonlinear gap. Claiming λmin(I−Glin
+⋆ )/n bounded below — a
+gap in every direction — would overstate what the sum-of-logs obstruction supports.
+Proof strategy. Three steps, each self-contained.
+(i) Non-representability. The score contributions are ∂ρ logp =−ν+n
+2
+∂ρQ
+ν+Q and ∂ν logp =
+∂νc− 1
+2 log(1 +Q/ν) +ν+n
+2
+Q
+ν(ν+Q). Both are nonlinear functions of the global scalarQ(X;ρ). The
+pairwise sub-scores are, by contrast, functions of ( Xi,Xj) alone, so every element of L is a sum
+of local terms. Writing Q =P
+i≤jωijXiXj and expanding 1
+ν+Q, the score contains the ratio of a
+local sum to a global sum, i.e. a sum-of-logs versus log-of-sum obstruction. Formally: show the
+residual R =g0− ΠLg0 has E[RR⊤]̸= 0 by exhibiting a test function h(Q) with Cov(g0,h )̸= 0
+and Cov(ℓ,h ) = 0 for allℓ∈L . The ν-coordinate is the structurally irreducible one: log(1 +Q/ν)
+is not a sum of pairwise terms for any ρ.
+(ii) Order-one constant. Under the scale-mixture representation X | W ∼ N(0, Ω−1/W ),
+W∼ Gamma(ν/2,ν/ 2), the quantity Q/ν concentrates and the residual admits a closed form in
+terms of moments of W . Compute E[RR⊤] explicitly; its n−1-normalized limit is κ.
+(iii) Attainability. ΠLg0 is attained by Slin(·;W⋆), while g0 itself is a measurable nonlinear
+function of (P
+i cs1,{P
+Uk cs2}k) wheneverQ is recoverable from the pairwise aggregates — which
+holds for banded Ω( ρ). Hence the nonlinear class {Sψ◦Tϕ} contains, at population level and
+infinite capacity, an estimating function with G =I(θ0).
+Remark 7 (Why this is the load-bearing claim) . Every other result in this note is machinery for
+exploiting a gap that Theorem 5 asserts exists. If the constant κ cannot be exhibited in closed
+form, the honest fallback is: Proposition 1 + Proposition 2 + a Monte-Carlo estimate of I−Glin
+⋆
+on the Student-t testbed. That is a weaker paper and the abstract must be written differently.
+Settle this first.
+Remark 8 (Capacity and finiten). Step (iii) is a population, infinite-capacity statement. At finite
+capacity the achieved G is I(θ0)−O(ϵ) where ϵ is the L2 approximation error of Sψ◦Tϕ on the
+relevant neighbourhood; see Proposition 21. Claims in the paper should be flagged as holding (a)
+at population level, (b) under finite capacity, or (c) under the specific heavy-tailed model.
+3 Part II: the auxiliary-parameter problem
+The surrogate score is a two-argument object Sψ,ϕ(x,β ). Mode A uses (Section 5) query it on the
+diagonal β = θ; Mode B needs a θ-free statistic, which forces β = bβ(X) to be data-dependent.
+This section characterizes completely what can and cannot be done about the resulting pilot
+dependence.
+3.1 The translation identity
+Lemma 9 (Translation identity; proved). Under Assumptions 1–2,
+∂βµ(θ,β )
+
+β=θ = −H(θ) = −∂θµ(θ,β )
+
+β=θ.
+4
+===== PAGE 5 =====
+Consequently, locallyµ(θ,β ) =H (θ−β)+o(∥θ−β∥): the mean of the estimating function depends
+on θ and β only through their difference.
+Proof. Differentiateµ(θ,θ ) = 0 (Assumption 2) with respect toθ by the chain rule: ∂θµ+∂βµ = 0
+on the diagonal. Rearranging gives the claim; a first-order Taylor expansion about β = θ gives
+the local form.
+Lemma 9 is the engine of everything below. Note it is not a property of the architecture:
+the true score satisfies it ( ∂θEθg0 = I =−E∂βg0, the second Bartlett identity in disguise), and
+any Fisher-consistent surrogate inherits it. Sensitivity to the data-generating parameter and
+sensitivity to the evaluation point are the same matrix with opposite sign.
+Lemma 10 (Local linearization; proved). Under Assumption 1, uniformly for β in anO(n−1/2)-
+neighbourhood ofθ0,
+m(X,β ) = H
+ bθ1−β
+
++ op(n1/2), (3)
+wherebθ1 =β +H−1m(X,β ) is the one-step estimator from β and the remainder is uniform over
+the neighbourhood.
+Proof. Immediate from (1) as an identity, with the stochastic remainder controlled by expanding
+m(X,β ) around θ0 and applying Lemma 9: the Op(∥β−θ0∥) drift is exactly −H(β−θ0), so
+m(X,β ) =m(X,θ 0)−H(β−θ0)+op(n1/2), and the definition ofbθ1 absorbs both terms. Uniformity
+follows from stochastic equicontinuity.
+Equation (3) is worth reading slowly. The score value at any evaluation point is, to first
+order, the discrepancy between the one-step estimator and that point, scaled by H. The taxonomy
+of algorithms in Section 5 is (3) evaluated at three choices of β.
+3.2 Impossibility and characterization
+Call a statistic F first-order pilot-invariant if its total derivative along a perturbation of the
+evaluation point vanishes at leading order.
+Theorem 11 (Impossibility and characterization; proved). LetH be nonsingular and let F be
+C1.
+(a) (Impossibility.) SupposeF depends on the pair (bβ, m(X,bβ)) only through the second argu-
+ment, F =F (m). If F is first-order pilot-invariant then DFH = 0, hence DF = 0, and F
+is first-order ancillary: its mean does not respond to θ at leading order.
+(b) (Characterization.) SupposeF =F (bβ,m ). Then F is first-order pilot-invariant if and only
+if it solves
+Fβ = FmH,
+whose general solution is
+F (bβ,m ) = Φ
+
+bβ +H−1m
+
+= Φ(bθ1)
+for an arbitrary C1 function Φ.
+5
+===== PAGE 6 =====
+Proof. Perturb the evaluation point bβ 7→ bβ +dβ. By Lemma 9 the mean of m responds as
+dm =−Hdβ , while the response to a perturbation of the data-generating parameter is + Hdθ .
+(a) With F = F (m), dF = Fmdm =−FmHdβ . Pilot-invariance requires FmH = 0 for all
+dβ, so Fm = 0 by nonsingularity of H. But the response of F to θ is FmHdθ , which then also
+vanishes. Hence F carries no first-order information about θ.
+(b) With F = F (bβ,m ), dF = Fβdβ +Fmdm = (Fβ−FmH)dβ. Invariance is therefore
+Fβ =FmH, a linear first-order PDE. Its characteristic curves are {(β,m ) : β +H−1m = const},
+since along ˙β =v, ˙m =−Hv the combination β +H−1m is constant. The general solution of a
+linear homogeneous transport equation is an arbitrary function constant on characteristics, giving
+F = Φ(bβ +H−1m) = Φ(bθ1).
+Remark 12 (Interpretation). Part (a) says: pilot-invariance and θ-informativeness are the same
+derivative, with opposite sign. Trying to launder the pilot error out of the score value alone
+necessarily launders out the signal. In particular there is no “debiased score” summary — a
+natural reviewer suggestion — and no rescue from over-identification ( q > p): directions in the
+left null space of H are pilot-insensitive precisely because they are θ-insensitive.
+Part (b) says: the one-step estimator is not one option among several . It is the unique first-
+order pilot-invariant coordinate on the pair, up to bijection. Any procedure that removes pilot
+dependence while retaining information — including “improve bβ to ˜β using the surface, then
+evaluateSψ,ϕ(X, ˜β)” — reconstructs bθ1 or fails.
+Corollary 13 (Degeneracy at the corrected point; proved). m(X,bθ1) = op(n1/2); that is, the
+score evaluated at the one-step estimator is first-order pilot-invariant but carries only second-
+order content. Iterating, m(X,bθk) is op(n1/2) for every k≥ 1, and at the exact root m(X, ˜θ)≡ 0
+identically. Thus Sψ,ϕ(X, ˜θ) = 0 is the limiting case ( k→∞ ) of the same phenomenon.
+Proof. Set β =bθ1 in (3): the leading term is H(bθ1−bθ1) = 0. The root is the fixed point of the
+iteration, at which the estimating equation holds by definition.
+Corollary 14 (Information conservation; proved). Along the Newton trajectory β 7→ bθ1(β),
+the first-order information carried by the score value decreases monotonically to zero, while the
+information in the pair (β, m(X,β )) is conserved: for every β in the tube,
+σ
+ bθ1
+
+⊆σ
+ 
+β, m(X,β )
+
+,
+and the two σ-fields carry the same first-order information about θ. Information is not lost as
+β→ ˜θ; it migrates from the score value into the evaluation point.
+Remark 15 (The summary must not be the score value alone) . Corollaries 13–14 jointly foreclose
+usingSψ,ϕ(X,bβ(X)) withoutbβ as an amortized summary: the better the pilot, the less informative
+the summary, degenerating to the zero statistic at the root. This does not apply at a fixed
+evaluation point βobs (see Proposition 24).
+3.3 Consequences for summary construction
+Proposition 16 (Sufficiency ordering; proved). σ(bθ1)⊆σ(bβ, m(X,bβ)), hence for any prior,
+the posterior p
+ 
+θ|bβ, m(X,bβ)
+
+is at least as sharp as p
+ 
+θ|bθ1
+
+,
+with first-order equality: the extra coordinate is asymptotically ancillary. Both dominate p(θ|
+m(X,bβ)) strictly, by Corollary 13.
+6
+===== PAGE 7 =====
+Proof. bθ1 is a fixed measurable (indeed affine) function of the pair, so its generated σ-field is
+coarser; conditioning on a finer σ-field cannot lose information. First-order equality is Theo-
+rem 11(b) applied with Φ = id: the residual coordinate is invariant-complementary, and by
+Lemma 10 it equals m(X,bθ1) =op(n1/2).
+Remark 17 (Which to feed the density estimator). Proposition 16 favours the pair on information
+grounds; two countervailing considerations favour bθ1. (i) The map ( bβ,m )7→ bθ1 is a first-order
+linearization, exact only to the order of (3); feeding the pair lets the density estimator learn
+the true nonlinear invariant combination, which matters precisely in the wide-tube / bad-pilot
+regime. (ii) Conversely, feeding bθ1 injects a known combination as inductive bias, saving the
+estimator from rediscovering it — an advantage only at small simulation budgets. (iii) The
+analytic sandwich and the efficiency statement are properties ofbθ1; the UQ claim must be anchored
+to it. Recommendation: pair as the method, bθ1 as theory anchor and small-budget ablation.
+Remark 18 (Centering and NPE-invariance). Since EβSψ,ϕ(X,β ) is a known function ofβ, replac-
+ingSψ,ϕ bym is a bijection of the summary vector when bβ is included. Hence the NPE posterior
+is invariant to centering. Centering is nonetheless required for: bθ1,H,V , the sandwich, and every
+asymptotic statement above. FSM training (Algorithm 1) delivers approximate centering auto-
+matically, since the population optimum is the true score; the residual ∥ \EβSψ,ϕ∥ is therefore a
+free diagnostic of approximation error.
+4 Part III: validity, efficiency, and pilot conditions
+Proposition 19 (Validity is unconditional; proved). Let bβ :X →Rp be any measurable map
+— consistent, inconsistent, or arbitrary. Then T (X) = (bβ(X), Sψ,ϕ(X,bβ(X))) is a statistic of X
+alone, and p(θ| T (Xobs)) is an exact posterior given T . Pilot error introduces no bias into SBI
+inference.
+Proof. Composition of measurable maps. The posterior given any statistic is well defined and
+exact for that statistic; nothing about its construction need reference θ.
+Remark 20 (The deployability pillar, stated correctly) . Proposition 19 is the precise content of
+“pilot robustness”. SBI conditioning converts pilot error from a validity problem into an efficiency
+problem. This is a categorical difference from the classical one-step regime, where a bad pilot
+yields a wrong estimator and wrong sandwich intervals. The claim to make is therefore not “we
+mitigate bad pilots” but “conditioning makes pilot error an efficiency question, and the tube
+plus the invariant coordinate recover the efficiency.” The narrower phrase “the main obstacle to
+amortizing score-based summaries” should be preferred to “. . . to using score-based summaries”,
+since at a fixed evaluation point the obstacle largely disappears (Proposition 24).
+Condition 1 (Tube coverage). Let Π train be the law of ( X,β ) generated by Algorithm 1 and
+Πdeploy the law of (X,bβ(X)) under θ∼π. Then Π deploy≪ Πtrain with bounded Radon–Nikodym
+derivative on a neighbourhood of the diagonal containing the pilot’s support.
+Proposition 21 (Tube approximation; to verify). Suppose the trained surface satisfies∥Sψ,ϕ−
+g0∥L2(Πtrain)≤ϵ and Condition 1 holds with RN-derivative bounded by C. Then the pair summary
+attains Godambe information at leastG−O(
+√
+Cϵ ) (approximation error can only lose information,
+never add it), and the one-step estimator satisfies
+bθ1−θ0 =I(θ0)−1 1
+ng0(X;θ0) +Op
+ 
+∥bβ−θ0∥2
++Op(ϵ) +op(n−1/2).
+7
+===== PAGE 8 =====
+Remark 22. Condition 1 has no classical analogue: the true score is globally exact, so no
+train/deploy distributional condition is ever needed. It is the price of a learned surface, and
+it is checkable by simulation, unlike “the network is good”. It also dictates the design rule: tube
+width∝ pilot sandwich standard error, with training density concentrated near the diagonal
+where later Newton iterates live. Too narrow reproduces the diagonal-only extrapolation failure;
+too wide spends capacity on the fixed-δ regime where the deterministic drift−n∇β KL dominates
+the Op(√n) stochastic signal.
+Proposition 23 (One-step and k-step efficiency; proved). Assume Assumption 1 and ϵ = 0. If
+∥bβ−θ0∥ =op(n−1/4) then bθ1 is first-order efficient for the estimating function:
+√n(bθ1−θ0)⇝N
+ 
+0, G−1
+, G =H⊤V−1H,
+and bθ1 is asymptotically equivalent to the root ˜θ; if Sψ,ϕ = g0 then G = I(θ0) and bθ1 is asymp-
+totically equivalent to the MLE. If instead ∥bβ−θ0∥ = Op(n−γ) with γ ∈ (0, 1/4], then k =
+⌈log2{1/(2γ)}⌉ Newton steps suffice for the same conclusion.
+Proof sketch. Expandm(X,bβ) aroundθ0 using Lemma 9: the linear term−H(bβ−θ0) cancels the
+bβ outside (1), leavingbθ1−θ0 =H−1m(X,θ 0)+Op(∥bβ−θ0∥2). The quadratic remainder isop(n−1/2)
+iff∥bβ−θ0∥ = op(n−1/4). Newton error squares per iteration, giving the stated k. Asymptotic
+normality with covariance H−1VH−⊤ and G =H⊤V−1H is the standard sandwich.
+Proposition 24 (Fixed evaluation point; proved). Let βobs = bβ(Yobs) be computed once and
+held fixed across pseudo-datasets. Then:
+(i) x7→ m(x,β obs) is a deterministic statistic and, exactly — by definition of the one-step
+map bθ1 = βobs + bH−1m(x,β obs), with βobs and bH constants across pseudo-datasets, no
+linearization needed — an affine bijection of bθ1; the degeneracy of Corollary 13 does not
+activate.
+(ii) Consequently ABC with an affine-invariant discrepancy gives identical (not merely asymp-
+totically equivalent) output whether the summary is m(·,β obs) or bθ1.
+(iii) Consistency of bβ at any rate suffices for first-order efficiency: the information loss is
+O(∥βobs−θ0∥) and no expansion in the pilot error is inverted.
+Remark 25 (Why the two regimes differ) . Proposition 24(iii) versus Proposition 23 answers a
+natural question: why does ABC need only consistency while the amortized one-step needs a
+rate? Because ABC at fixed β never inverts the pilot error; the Newton map does, and inversion
+is what imposes op(n−1/4).
+4.1 Tiered pilot conditions
+Remark 26 (Pilot design under heavy tails) . For Student-t with ν∈ (3, 4] the natural moment
+pilot forν (sample kurtosis) requires a finite fourth moment and is inconsistent or arbitrarily slow.
+Use rank- or quantile-based pilots: Kendall’s τ / Gaussian-rank correlation for ρ, a quantile-ratio
+or tail-index estimator forν. Both are closed-form and√n-consistent without moment conditions.
+This detail will be checked by any referee who knows t-models.
+8
+===== PAGE 9 =====
+Guarantee Requires Algorithm Reference
+Posterior validity measurability of bβ only 6 Prop. 19
+Surface accuracy at deployment tube coverage (C1) 1, 6 Prop. 21
+Non-degenerate information identifiability of θ from µ(·,β⋆) 6 Cor. 13
+Efficiency, ABC at fixed β consistency, any rate 8 Prop. 24
+Efficiency + analytic sandwich op(n−1/4), H nonsingular, correct basin 7, 4 Prop. 23
+Table 1: What each guarantee costs. Note that pilot rate enters only the last row; validity is free,
+and the fixed-β regime is rate-insensitive.
+5 Part IV: algorithms
+The organizing axis is the evaluation point β. Mode A queries the surface on the diagonal β =θ
+(no pilot needed). Mode B needs a θ-free map, obtained by collapsing β: freeze it, retain both
+coordinates, or Newton-correct it into the invariant coordinate.
+5.1 Training
+Algorithm 1: Tube training of the score surface (recommended)
+Input: prior/grid for tube centers; tube width τ∝ pilot sandwich SE; batch B
+1 repeat
+2 sample center β;
+3 sample θ∼N(β,τ 2I) ; // θ downstream of β --- critical
+4 simulateX∼p(·| θ);
+5 target Y ← (θ−β)/τ 2; predict bS←Sψ{Tϕ(X,β )};
+6 gradient step on (ψ,ϕ ) to reduce∥bS−Y∥2;
+7 until converged;
+Output: Sψ,ϕ(x,β )≈∇ β logp(x|β), accurate on the tube
+Why β must be an ancestor of X. The FSM identity E[(θ−β)/τ 2| X]≈∇ β logp(X |
+β) requires the generative order β → θ → X. If instead β = bβ(X) is computed from X (a
+descendant), the population minimizer becomes {E[θ | Tϕ(X)]− bβ(X)}/τ 2, i.e. the posterior-
+mean correction, not the score. That object is Algorithm 9, a different (and weaker) method.
+Evaluating a tube-trained surface at bβ(X) after training is fine; training against a target defined
+through bβ(X) silently changes the estimand.
+Twoβ-sourcing variants inside the loop: surrogateβ =θ+ε,ε∼N(0,bΣpilot/n) (training-only
+shortcut; second-order train/deploy mismatch since it makes β⊥ ⊥X| θ and exactly Gaussian);
+or real pilot β =bβ(X) (exact pilot geometry, costs one pilot solve per simulation). The surrogate
+is admissible only inside Algorithm 1; it is inadmissible in Mode B training (Section 5.4), where
+the summary map must be identical at NPE-training and observation time.
+9
+===== PAGE 10 =====
+Algorithm 2: Godambe information maximization (alternative / fine-tuning objective)
+Input: training points θ; batch B; ridge λ; step δ
+1 repeat
+2 simulateX(1:B)∼p(·| θ); Sb←Sψ,ϕ(X(b),θ );
+3 bV ← dCov(Sb) +λI;
+4 for k = 1,...,p do
+5 bH:,k←{bµS(θ +δek)−bµS(θ−δek)}/(2δ) ; // or autodiff / CRN
+6 end
+7 maximizeL = 2 log| det bH|− log detbV ; // or variational
+maxM tr(2M⊤bH−M⊤bVM )
+8 until converged;
+Both objectives target the same population optimum (the Fisher score, up to nonsingular linear
+transformation); Algorithm 1 is cheaper and inverse-free, Algorithm 2 targets efficiency directly.
+Use 2 as a gating check: Monte-Carlo I(θ0)−Glin
+⋆ before investing in the full pipeline.
+5.2 Shared components
+Algorithm 3: Li–Fearnhead regression head (inverse-free Newton coefficient)
+Input: tube simulations{(θ(b),β (b),X (b))} from Algorithm 1
+1 bB← arg minB
+P
+b
+θ(b)−β(b)−BSψ,ϕ(X(b),β (b))
+2;
+Output: bB, estimating H−1 without forming or inverting bH
+The population minimizer is the posterior-mean map, which by Lemma 9 coincides with H−1 to
+first order. This is the numerically preferred implementation: no finite differences, no δ, no matrix
+inverse, and it reuses simulations already generated. It is also, read differently, Fearnhead–Prangle
+semi-automatic regression applied to a learned structured summary.
+5.3 Mode A: use the surface directly (no pilot)
+Algorithm 4: Estimating-equation inference (k-step Fisher scoring)
+1 θ(0)←bβ(Xobs);
+2 for t = 0,...,k − 1 do
+3 m(t)←Sψ,ϕ(Xobs,θ (t))−bEθ(t)Sψ,ϕ ; // centered; Remark 18
+4 θ(t+1)←θ(t) + bBm (t) (or bH−1m(t));
+5 end
+Output: bθ =θ(k); sandwich bΣ = bH−1bV bH−⊤ atbθ
+k = 1 suffices under op(n−1/4); iterate to convergence for the classical Z-estimator root (Proposi-
+tion 23). Each step is a forward pass and a p×p solve — no new simulations.
+Algorithm 5: Score-based sampler
+1 Run Langevin / diffusion sampler with drift Sψ,ϕ(Xobs,θ current);
+The sampler queries the surface along its own trajectory , so β = θ throughout: the diagonal is
+exactly where Algorithm 1 trains, and no auxiliary-parameter problem arises. This is the cleanest
+use of the two-argument surface and the reason Part II is a Mode-B issue only.
+10
+===== PAGE 11 =====
+5.4 Mode B: amortized SBI summaries
+In every Mode-B algorithm the summary map must be identical at NPE-training and observation
+time; hencebβ is evaluated on every simulated dataset, and the surrogateβ =θ+ε is not admissible
+here.
+Algorithm 6: Pair summary→ NPE (headline method)
+1 summary(X): β←bβ(X); return
+ 
+β, Sψ,ϕ(X,β )
+
+∈ R2p;
+2 simulateθ(b)∼π, X(b)∼p(·| θ(b)); run bβ on each;
+3 train qη
+ 
+θ| summary(X)
+
+on{(θ(b), summary(X(b)))};
+Output: qη(θ| summary(Xobs))
+Justification. Proposition 16 (weakly dominant, loses nothing); Proposition 19 (valid for any
+pilot); Theorem 11(b) (what the density estimator asymptotically learns is a function of bθ1 — so
+the black box is characterized, not merely trusted). The pair repairs the structural insufficiency
+of the score value alone under any random pilot, good or bad: (3) is one p-vector constraining two
+unknowns, and bβ closes the system. Pilot quality enters only via Condition 1 and NPE difficulty
+— never via validity. No tuning parameter k, no bH, no δ.
+Algorithm 7: One-step summary→ NPE (theory anchor / UQ / small budgets)
+1 summary(X): β←bβ(X); returnbθ1 =β + bBSψ,ϕ(X,β )∈ Rp;
+2 train and deploy NPE as in Algorithm 6;
+3 report bθ1 as point estimate with sandwich bΣ; check NPE spread against bΣ;
+Justification. Proposition 23 (bθ1 attains G; Fearnhead–Prangle-optimal, since an efficient esti-
+mator is asymptotically sufficient and bθ1≃ E[θ|Tϕ] by Li–Fearnhead). The sandwich describes
+this estimator, so conditioning on bθ1 keeps the analytic covariance and the posterior referring to
+the same object — the coherence the certification claim requires. NPE adds what the sandwich
+cannot: the finite-sample conditional law (skewness, tails, prior influence). Agreement between
+the two is the certificate.
+Algorithm 8: Fixed-βobs score summary→ ABC (single dataset)
+1 βobs←bβ(Yobs) ; // computed once
+2 summary(X)←Sψ,ϕ(X,β obs) ; // same fixed point for all pseudo-data
+3 run ABC comparing summary(Yobs) against summary(X(b));
+Justification. Proposition 24: the score value is an affine bijection of bθ1 here, so the degeneracy
+never activates and the score alone is a valid summary. Rate-insensitive to the pilot. Non-
+amortized: the per-dataset pilot cost is zero, but one NPE cannot serve future observations.
+Algorithm 9: Baseline: Fearnhead–Prangle regression with composite-score features
+1 simulateθ(b)∼π, X(b)∼p(·| θ(b));
+2 fit mη : Tϕ(X,bβ(X))7→θ ; // targets E[θ|Tϕ(X)], not the score
+3 summary(X)←mη(Tϕ(X,bβ(X))); run NPE/ABC;
+Role. Strongest Mode-B baseline, sharing the feature architecture, so the comparison isolates
+the value of the surface-plus-invariant-coordinate structure. It is simpler (no tube, no Newton,
+no bH) but forfeits: Mode A entirely (no two-argument surface), the k-step repair, prior-freeness
+(its target is defined under the training prior; the score surface is a frequentist object), the LAN
+inductive bias (it must model the posterior-mean map globally rather than the score locally), and
+any analytic covariance. Its UQ column is empty by construction.
+11
+===== PAGE 12 =====
+6 Mapping claims to experiments
+Each row is a proposition and the figure that must exist for it.
+Claim Experiment
+Thm. 5: ν-gap is order-one Student- t AR(1), closed-form g0: plot the ν-direction
+quadratic forms e⊤
+νn−1{I−Glin
+⋆ }eν and e⊤
+νn−1{I−
+Gnl}eν vs. n; the first flat and positive, the second
+→ 0. Sweep both degenerate limits: ν → ∞and
+ρ→ 0 (gap must close in each — two further falsifica-
+tion tests). Report the ρ-direction gap descriptively,
+without a theorem attached.
+Prop. 2: no gap in exp. family Gaussian AR(1) negative control : nonlinear must
+match, not beat, optimal linear CL. Beating it fal-
+sifies the pipeline.
+Credit attribution W⊤Tϕ (linear readout, learned features) vs. Sψ(Tϕ)
+(nonlinear readout): isolates aggregator from features.
+Baselines are not merely under-fed Khoo / Jiang architectures given the sub-score features
+as inputs, matched simulation budget and capacity. If
+the gap closes, the contribution is the features, not the
+aggregation — run this before submission.
+Cor. 13: degeneracy Summary = Sψ,ϕ(X,bβ) alone vs. pair vs. bθ1. Expect
+pair≥ bθ1≫ score-alone; first gap shrinks in n, last
+never closes.
+Prop. 19 + 21: validity vs. effi-
+ciency
+2× 2: {Alg. 6, Alg. 7}×{ good pilot, biased pilot}.
+Plus: inconsistent pilot with tube centered on its bi-
+ased law⇒ calibrated but wider posteriors. No clas-
+sical method produces this plot.
+Prop. 23: sandwich validity Coverage of bΣ-based intervals; SBC of the NPE pos-
+terior; agreement between NPE spread and bΣ.
+Deployment Real heavy-tailed time series. Cannot evidence the
+gap (no ground truth); report calibration via simula-
+tion from bθ. Say so explicitly in the text.
+7 Open items
+1. Theorem 5 must be proved, withκ(ρ,ν ) in closed form or at least bounded below. Steps
+(i)–(iii) of the strategy are independent; step (i) (non-representability) is the essential one
+and may suffice if the constant proves intractable. The degenerate limits ν→∞ andρ→ 0
+are now built into the statement; the remaining direction question is whether theρ-direction
+gap is order-one on any model (2D grid, bandwidth b≥ 2, is the candidate — AR(1) is
+structurally favourable to pairwise CL in ρ and is expected not to show it).
+2. Proposition 21 needs the O(
+√
+Cϵ) constant made explicit, or restatement as a qualitative
+consistency claim.
+3. Population equivalence of the Algorithm 1 and Algorithm 2 objectives at the optimum
+(worked out separately) should be included as a proposition; it licenses training with the
+12
+===== PAGE 13 =====
+cheaper FSM loss while claiming the Godambe conclusion.
+4. Whether Theorem 11(b) extends beyond first order — i.e. whether an exactly pilot-invariant
+statistic exists — is open and probably negative.
+Framing note. Lead with Theorem 5: nonlinear aggregation of composite sub-scores recovers
+information that no linear composite score can — for the tail parameter, permanently and at
+order one. Then: exploiting this in amortized SBI requires resolving the auxiliary-parameter
+problem, which Theorem 11 settles completely. Then the algorithms as consequences. The one-
+step machinery, LAN expansion, and Godambe training are classical recombinations — necessary,
+but not the novelty, and the abstract must not suggest otherwise.
+References
+V. P. Godambe. An optimum property of regular maximum likelihood estimation. Ann. Math.
+Statist., 1960.
+C. C. Heyde. Quasi-Likelihood and Its Application . Springer, 1997.
+W. Li and P. Fearnhead. On the asymptotic efficiency of approximate Bayesian computation
+estimators. Biometrika, 2018.
+P. Fearnhead and D. Prangle. Constructing summary statistics for ABC. JRSS-B, 2012.
+Khoo et al. Local Fisher score matching. 2026.
+Jiang et al. [Surrogate-score architecture comparator — complete citation before circulation.]
+2025.
+C. Varin, N. Reid, D. Firth. An overview of composite likelihood methods. Statist. Sinica, 2011.
+V. Chernozhukov and H. Hong. An MCMC approach to classical estimation. J. Econometrics,
+2003.
+13

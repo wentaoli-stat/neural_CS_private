@@ -1,0 +1,93 @@
+
+===== PAGE 5 =====
+Level Structure of log p Minimal exact recoverer Instance
+0 P
+iℓi(Wi;θ) linear CS i.i.d.; order- k Markov with (k+1)-margins
+1 Λ( P
+iψ(Wi);θ), Wi inside library nCS at library granularity elliptical banded precision; global mixture
+2 as Level 1, Wi larger than library windowed/blockwise nCS block latents; replicates; delay- k AR
+3 no finite separable T (matrix product) none exact; geometric window law HMM; stochastic volatility; Hawkes
+Table 1: The four-level ladder. The gap is governed by where the nonlinearity sits relative to the
+sub-score library’s granularity, not by “non-Gaussianity” as such.
+(c) variance-component and anisotropy models whose log-likelihood is a sum of site-wise terms.
+Remark 7 (The Level-0 trap, and what it forbids as a testbed) . Proposition 6(b) is a strong and
+easily overlooked negative result: every first-order Markov model has zero gap once the library
+contains pairwise and marginal sub-scores — verified numerically to 5×10−10 on a Markov copula
+chain and to R2 = 1.000000 on a triple-margin threshold AR. Consequences for the experiment
+plan:
+ “Student-t AR(1)” is ambiguous and one reading is fatal. Elliptical with AR(1) scatter
+(Example 1) is Level 1 and has a gap; AR(1) with i.i.d. t innovations is Markov, hence
+Level 0, and has zero gap. The phrase will be read as the second. Disambiguate in the
+paper or the testbed appears broken.
+ Vector AR(1) with multivariate-t innovations is Markov, hence Level 0. It can demonstrate
+scaling, never a gap.
+Models that do produce a gap are those whose nonlinearity sits above the library’s granularity:
+banded-precision elliptical (Level 1), delay-k threshold AR with k beyond the window (Level 2),
+latent blocks or replicates (Level 2), and dynamic latents (Level 3).
+2.4 (Q1) The elliptical theorem: nonlinear beats linear
+Theorem 8 (Elliptical families with banded inverse scatter;to verify). LetY ∼En{0, Σ(γ),gν}
+with density c(θ)|Σ|−1/2gν{y⊤Σ(γ)−1y}, θ = (γ,ν ), and suppose Σ(γ)−1 is b-banded for all γ.
+Then
+T =
+P
+tytyt+ℓ
+
+0≤ℓ≤b
+is sufficient for θ and is a sum of pairwise functionals at lags ≤b, so (3) holds at pairwise gran-
+ularity. If in addition the lag- ℓ bivariate elliptical sub-score is injective in (A,C ) = (x2+y2,xy )
+modulo the sign symmetry respected by T (condition (4)), then:
+(i) nCS on exact pairwise sub-scores up to lag b recoversg0 exactly, including the generator
+parameterν;
+(ii) Glin
+⋆ =I(θ0) if and only if the generator gν is Gaussian;
+(iii) in the scatter directions, In(γ) = Θ( n) and the deficit e⊤
+γ{I−Glin
+⋆ }eγ is a fixed positive
+fraction of it, hence Θ(n): order-one per observation, permanently.
+Proof strategy. (i) is Theorem 1 with ψ the pairwise cross-products. (ii): g0 is linear in T iff
+∇θ loggν is affine, i.e. iff gν(s)∝ e−s/2. Gaussianity is the fixed point because only then is the
+5
+===== PAGE 8 =====
+2.6 Motivating examples
+The following are ordered as they should appear in the paper: two that establish (Q1), one that
+establishes (Q2) and carries the headline, one negative control, and two that delimit scope.
+Example 1 (Elliptical AR-scatter field — the (Q1) workhorse) . Y ∼ tν{0, Σ(ρ)} with Σ(ρ)−1
+tridiagonal (AR(1) scatter). Level 1. Closed-form g0, so the gap is measurable against ground
+truth. Theorem 8: nCS on lag- ≤ 1 pairwise sub-scores is exact; linear CS is not, with deficit a
+fixed fraction of Θ(n) information in the ρ direction. Measured REA≈ 0.76–0.85 at ν = 3 versus
+0.87–0.93 at ν = 10, both → 1 under the oracle — the ν-dependence is the distance from the
+Gaussian fixed point. Must be labelled unambiguously as the elliptical model , never as
+“Student-t AR(1)” (Remark 7). Report the ρ direction, not ν (Remark 9(c)).
+Example 2 (Global regime mixture — exact-inversion illustration) . Yi| Z∼ (1−Z)f0 +Zf1
+with a single global regime indicator. Level 1, Theorem 10(a). The recovery map is available in
+closed form: ϕ(s) = log{1 + (1−π)s}/{1−πs} recovers logri exactly, giving oracle RE = 1.000.
+Its value is pedagogical — it exhibits ϕ as the inverse of the sub-score’s saturation (Principle 2)
+— and it is an honest illustration of Proposition 12: Method C reaches 0.98, so this example must
+not be used to argue for pre-aggregation nonlinearity.
+Example 3 (Independent block latents — the headline (Q2) example) . m i.i.d. blocks of size J,
+each with its own latent: blockwise- t (per-block scale mixture), common-shock ( Yb,i = λb +εb,i,
+d-dimensional), or max-stable replicates. Level 2, Theorem 14. This is the load-bearing example:
+information Θ(m) with no saturation, deficit stable in m and tunable through J or d, exact
+recovery by hierarchical per-block pooling and not by global pooling, and RE C ≈ REA so the
+comparison isolates pre-aggregation nonlinearity. Measured: block- t 0.89→ 0.99; common shock
+d=15 0.80→ 0.99; max-stable 0.78→ 1.000 (identical to four decimals between A and C).
+Example 4 (Gaussian banded-precision field — negative control) . Same design as Example 1
+with a Gaussian generator. By Theorem 8(ii) the gap is exactly zero, and by Proposition 6 any
+first-order Markov model with a pairwise+marginal library is likewise exactly zero. A method that
+beats the linear ceiling here is reporting noise. Two independent negative controls — generator
+Gaussianity and Level-0 separability — are stronger than one.
+Example 5 (Delay-k threshold AR — granularity, not nonlinearity). Yt =αYt−1+βYt−11{Yt−k >
+c} +εt with delay k exceeding the library’s window. Level 2. With triple margins covering the
+delay, linear CS is exact ( R2 = 1.000000, Proposition 6); with only pairwise margins, pointwise
+ϕ gains essentially nothing (0 .892 → 0.900) while windowed ϕ at matched granularity gains
++0.09 (→ 0.98 against a triple-margin ceiling of 0 .99). The cleanest available demonstration of
+Principle 1: the batching structure, not the flexibility of ϕ, is what buys recovery.
+Example 6 (HMM / stochastic volatility — Level 3 and the window law) . Two-state mean-
+or variance-switching HMM, or stochastic volatility with quadrature-exact bivariate sub-scores.
+Level 3, Theorem 10(c): no finite exact recoverer, geometric window law 1 − RE≲Cρ2w. Mea-
+sured on the persistence parameter: 0 .18 (pointwise)→ 0.67 (windows, b=2)→ 0.80 (with lags),
+pointwise ϕ contributing +0.00. This example earns its place by supplying a rate rather than a
+dichotomy, and by motivating recurrent or attention aggregation as the Level-3 completion. Pre-
+dictions worth one confirmatory run: Hawkes processes are Level 3 with window scale (1−α/κ)−1,
+so near-criticality plays the role of ρ↑ 1.
+8

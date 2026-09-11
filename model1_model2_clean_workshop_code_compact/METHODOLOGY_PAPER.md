@@ -36,42 +36,42 @@ mechanism, to structural stress, to scientific application.
 
 Let
 
-\[
+$$
 \boldsymbol\theta\in\Theta\subseteq\mathbb R^d
-\]
+$$
 
 denote the scientific parameter of interest. Computation is performed in an
 unconstrained coordinate
-\[
+$$
 \boldsymbol\beta=r(\boldsymbol\theta)\in\mathbb R^d.
-\]
+$$
 
 A score evaluation point, also called a reference point or anchor, is denoted
-by \(\boldsymbol\beta_0\). A parameter drawn from its local proposal is denoted
-by \(\widetilde{\boldsymbol\beta}\). This notation separates the scientific
+by $\boldsymbol\beta_0$. A parameter drawn from its local proposal is denoted
+by $\widetilde{\boldsymbol\beta}$. This notation separates the scientific
 parameter, the computational coordinate, the score evaluation point, and the
-random perturbation. For the two mixture experiments, \(d=1\),
-\(\theta=\pi\), and
+random perturbation. For the two mixture experiments, $d=1$,
+$\theta=\pi$, and
 
-\[
+$$
 \beta=\operatorname{logit}(\pi),
 \qquad
 \pi=\operatorname{sigmoid}(\beta).
-\]
+$$
 
-For the max stable experiment, \(d=3\), and the transformation from the
-bounded parameter to \(\boldsymbol\beta\) is given in Section 6. Bold notation is
+For the max stable experiment, $d=3$, and the transformation from the
+bounded parameter to $\boldsymbol\beta$ is given in Section 6. Bold notation is
 used for vectors. In the scalar experiments the bold symbols reduce to their
 scalar counterparts.
 
 The original local FSM formulation denotes the current optimization iterate by
-\(\boldsymbol\theta_t\) and a proposal draw by \(\boldsymbol\theta\). Our
+$\boldsymbol\theta_t$ and a proposal draw by $\boldsymbol\theta$. Our
 method learns one field over many evaluation points instead of fitting a new
 model at each sequential iterate. We therefore use
-\(\boldsymbol\beta_0\) rather than \(\boldsymbol\theta_t\), and reserve
-\(\boldsymbol\theta\) for the scientific parameter on its original scale.
+$\boldsymbol\beta_0$ rather than $\boldsymbol\theta_t$, and reserve
+$\boldsymbol\theta$ for the scientific parameter on its original scale.
 
-The transformation to \(\boldsymbol\beta\) has three purposes. It converts a
+The transformation to $\boldsymbol\beta$ has three purposes. It converts a
 constrained parameter space into an unconstrained Euclidean space, allowing
 Gaussian perturbations without boundary clipping. It permits pilot optimization
 with ordinary gradients and curvature while preventing invalid probabilities
@@ -81,50 +81,50 @@ no parameter information is discarded, and posterior summaries can be returned
 to the original scientific scale.
 
 For a mixing probability, the logit is particularly convenient because it maps
-\((0,1)\) bijectively to \(\mathbb R\). It also gives a simple likelihood score:
+$(0,1)$ bijectively to $\mathbb R$. It also gives a simple likelihood score:
 the posterior probability of the active component minus the mixing probability.
 This identity is derived explicitly in Sections 4 and 5.
 
-The score is learned with respect to \(\beta\), not directly with respect to
-\(\pi\). The \(\beta\) score remains bounded because it is a difference of two
-probabilities. By the chain rule, the corresponding \(\pi\) score contains the
-factor \(\{\pi(1-\pi)\}^{-1}\), which becomes poorly scaled near the boundary.
-Using \(\beta\) therefore improves numerical stability while preserving the same
+The score is learned with respect to $\beta$, not directly with respect to
+$\pi$. The $\beta$ score remains bounded because it is a difference of two
+probabilities. By the chain rule, the corresponding $\pi$ score contains the
+factor $\{\pi(1-\pi)\}^{-1}$, which becomes poorly scaled near the boundary.
+Using $\beta$ therefore improves numerical stability while preserving the same
 underlying parameter information.
 
-We use \(\ell\) for a local log likelihood ratio, \(L\) for a complete block
-log likelihood ratio, \(\boldsymbol s\) for a local score, and
-\(\boldsymbol S\) for a complete data score. The index \(k\) always denotes a
-block. The index \(j\) denotes a local contribution inside a block.
+We use $\ell$ for a local log likelihood ratio, $L$ for a complete block
+log likelihood ratio, $\boldsymbol s$ for a local score, and
+$\boldsymbol S$ for a complete data score. The index $k$ always denotes a
+block. The index $j$ denotes a local contribution inside a block.
 
 ### 2.2 Amortized forward score matching
 
 Stage 1 uses forward score matching, abbreviated FSM, to learn a score field
-over reference points. A reference \(\boldsymbol\beta_0\) is sampled from a
+over reference points. A reference $\boldsymbol\beta_0$ is sampled from a
 fixed design distribution. A perturbed coordinate is then drawn from
 
-\[
+$$
 \widetilde{\boldsymbol\beta}\mid\boldsymbol\beta_0
 \sim
 \mathcal N(\boldsymbol\beta_0,\boldsymbol\Sigma_q),
-\]
+$$
 
 and a complete dataset is generated from
 
-\[
+$$
 Y\sim p(\,\cdot\mid\widetilde{\boldsymbol\beta}).
-\]
+$$
 
 Amortization is needed because Stage 2 evaluates the score at a different
 pilot for every dataset. A model trained at one fixed reference point would
 have to be refitted whenever that evaluation point changed. Sampling reference
 points throughout the design region instead trains one reusable field,
 
-\[
+$$
 (Y,\boldsymbol\beta_0)
 \longmapsto
 \widehat{\boldsymbol S}(Y,\boldsymbol\beta_0),
-\]
+$$
 
 so the Stage 1 cost is paid once and the frozen field can be queried at every
 dataset specific pilot.
@@ -140,7 +140,7 @@ proposal widths below are fixed compromises between these effects.
 The FSM target is the score of the Gaussian proposal with respect to its
 reference:
 
-\[
+$$
 \boldsymbol t(\widetilde{\boldsymbol\beta},\boldsymbol\beta_0)
 =
 \nabla_{\boldsymbol\beta_0}
@@ -148,11 +148,11 @@ reference:
 =
 \boldsymbol\Sigma_q^{-1}
 (\widetilde{\boldsymbol\beta}-\boldsymbol\beta_0).
-\]
+$$
 
-The score network \(\widehat{\boldsymbol S}_{\psi}\) is trained by minimizing
+The score network $\widehat{\boldsymbol S}_{\psi}$ is trained by minimizing
 
-\[
+$$
 \mathcal L_{\mathrm{FSM}}(\psi)
 =
 \mathbb E
@@ -163,7 +163,7 @@ The score network \(\widehat{\boldsymbol S}_{\psi}\) is trained by minimizing
 \boldsymbol t(\widetilde{\boldsymbol\beta},\boldsymbol\beta_0)
 \right\|_2^2
 \right].
-\]
+$$
 
 Squared error is chosen because its population minimizer is the conditional
 mean of the accessible proposal target. The conditional expectation identity
@@ -172,7 +172,7 @@ likelihood score. A generic prediction loss would not provide this identity.
 
 The population minimizer is
 
-\[
+$$
 \widehat{\boldsymbol S}^{*}(Y,\boldsymbol\beta_0)
 =
 \mathbb E
@@ -187,7 +187,7 @@ The population minimizer is
 p(Y\mid\widetilde{\boldsymbol\beta})
 q(\widetilde{\boldsymbol\beta}\mid\boldsymbol\beta_0)
 \,d\widetilde{\boldsymbol\beta}.
-\]
+$$
 
 Thus, at nonzero proposal width, FSM targets the score of a Gaussian smoothed
 likelihood rather than the exact likelihood score at the reference point.
@@ -203,19 +203,19 @@ independent diagnostic.
 
 ### 2.3 Local composite score representation
 
-Write a complete dataset as \(K\) blocks. Within block \(k\), suppose that a
+Write a complete dataset as $K$ blocks. Within block $k$, suppose that a
 collection of tractable likelihood components provides local score tokens
 
-\[
+$$
 \boldsymbol s_{kj}(\boldsymbol\beta_0)
 =
 \left.
 \nabla_{\boldsymbol\beta}
 \log f_{kj}(Y_{kj}\mid\boldsymbol\beta)
 \right|_{\boldsymbol\beta=\boldsymbol\beta_0}.
-\]
+$$
 
-The index \(j\) may identify a single observation, an observation pair, or a
+The index $j$ may identify a single observation, an observation pair, or a
 spatial pair. Several types of token may be retained as separate channels.
 Every normalization constant is estimated from the Stage 1 training bank and
 then frozen.
@@ -227,12 +227,12 @@ the amount of structure that the neural network must discover from simulations.
 Estimating normalization constants from training data only prevents validation
 or test information from entering preprocessing.
 
-Let \(\boldsymbol x_{kj}\) denote the coordinate in which the local map is
+Let $\boldsymbol x_{kj}$ denote the coordinate in which the local map is
 applied. It is an invertible affine transformation of the local score, or the
 raw local score itself. This distinction is stated explicitly for each
 experiment. The general architecture is
 
-\[
+$$
 \widehat{\boldsymbol S}(Y,\boldsymbol\beta_0)
 =
 \sum_{k=1}^{K}
@@ -245,17 +245,17 @@ experiment. The general architecture is
 \right\},
 \overline{\boldsymbol\beta}_0
 \right].
-\]
+$$
 
-Here \(\overline{\boldsymbol\beta}_0\) is the standardized reference coordinate.
+Here $\overline{\boldsymbol\beta}_0$ is the standardized reference coordinate.
 The final implementations pass only the local score coordinate and the
 reference coordinate to the local map. In particular, pair distance and pair
 direction are not gate inputs in the max stable experiment. Distance is used
 only to assign spatial pairs to fixed pooling bins. The function
-\(\rho_{\omega}\) is a shared nonlinear MLP. Its output is a contribution to
+$\rho_{\omega}$ is a shared nonlinear MLP. Its output is a contribution to
 the complete data score, and these contributions are summed across blocks.
 When several score channels are present, each channel is pooled separately and
-the pooled values are concatenated before entering \(\rho_{\omega}\).
+the pooled values are concatenated before entering $\rho_{\omega}$.
 
 Pooling converts a collection of local contributions into a fixed dimensional
 representation. A mean is used within a channel so that its scale is not
@@ -285,14 +285,14 @@ changing the complete data architecture.
 
 The Linear arm uses the identity local map
 
-\[
+$$
 \phi_{L}(\boldsymbol x,\overline{\boldsymbol\beta}_0)
 =
 \boldsymbol x.
-\]
+$$
 
 The term Linear refers only to this identity map. The readout
-\(\rho_{\omega}\) remains nonlinear. Linear therefore means that no additional
+$\rho_{\omega}$ remains nonlinear. Linear therefore means that no additional
 nonlinear transformation is applied before pooling.
 
 We use **Nonlinear gate** as the displayed method name in all three
@@ -303,7 +303,7 @@ separate method name.
 
 The Nonlinear gate arm uses
 
-\[
+$$
 \phi_{N}(\boldsymbol x,\overline{\boldsymbol\beta}_0)
 =
 \boldsymbol x
@@ -312,17 +312,17 @@ The Nonlinear gate arm uses
 (\boldsymbol x,\overline{\boldsymbol\beta}_0),
 \qquad
 \boldsymbol m_{\eta}>\boldsymbol 0,
-\]
+$$
 
 where positivity is understood component by component. The multiplier is
 produced by an MLP followed by a softplus transformation. In scalar notation,
 
-\[
+$$
 m_{\eta}(x,\overline{\beta}_0)
 =
 \operatorname{softplus}
 \{g_{\eta}(x,\overline{\beta}_0)\}.
-\]
+$$
 
 Softplus is used because it is smooth, strictly positive, and has a finite bias
 that produces multiplier one exactly. It is less prone to explosive multipliers
@@ -338,7 +338,7 @@ calibration to adapt across the entire training region rather than learning one
 compromise transformation.
 
 This form changes the magnitude of the chosen local coordinate without changing
-its sign. Multiplication by \(\boldsymbol x\) also guarantees that a zero local
+its sign. Multiplication by $\boldsymbol x$ also guarantees that a zero local
 coordinate remains zero.
 
 These restrictions are intentional. In the raw score implementations,
@@ -350,23 +350,23 @@ feature coordinate rather than directly to the raw score. In either case the
 constraint is weaker than specifying the correct nonlinear map, so it remains
 usable when no analytic inverse is known.
 
-The final layer of \(g_{\eta}\) has zero weights and bias
+The final layer of $g_{\eta}$ has zero weights and bias
 
-\[
+$$
 b_{\mathrm{id}}
 =
 \operatorname{softplus}^{-1}(1)
 =
 \log(e-1).
-\]
+$$
 
 Consequently,
 
-\[
+$$
 \boldsymbol m_{\eta}=\boldsymbol 1,
 \qquad
 \phi_{N}=\phi_{L}
-\]
+$$
 
 at initialization. The Nonlinear gate function class therefore contains the
 Linear starting point exactly. The max stable implementation divides the
@@ -381,11 +381,11 @@ also provides a direct numerical nesting test for the implementation.
 
 An unrestricted residual map of the form
 
-\[
+$$
 \phi(\boldsymbol x)
 =
 \boldsymbol x+R_{\eta}(\boldsymbol x)
-\]
+$$
 
 is more general, but it may change signs, create nonzero output from a zero
 score coordinate, and mix directions. It is not the primary nonlinear method
@@ -426,7 +426,7 @@ score can occur at different parameter locations.
 
 Using the same notation in every experiment, the Stage 2 context is
 
-\[
+$$
 \boldsymbol c(Y)
 =
 \left(
@@ -434,27 +434,27 @@ Using the same notation in every experiment, the Stage 2 context is
 \widehat{\boldsymbol S}_{\mathrm{frozen}}
 \{Y,\widehat{\boldsymbol\beta}_{\mathrm{pilot}}(Y)\}
 \right).
-\]
+$$
 
 A neural posterior estimator is trained to approximate the posterior of the
-original parameter \(\boldsymbol\theta\) conditional on this context. The true
+original parameter $\boldsymbol\theta$ conditional on this context. The true
 generating parameter is used as the training target, not as an input. Training
 and deployment therefore use the same context construction.
 
 Each Stage 2 runner also includes a pilot only reference arm with context
 
-\[
+$$
 \boldsymbol c_{\mathrm{pilot}}(Y)
 =
 \widehat{\boldsymbol\beta}_{\mathrm{pilot}}(Y).
-\]
+$$
 
 This arm measures how much posterior information is already present in the
 coarse estimator. It is not part of the primary architectural contrast. The
 primary comparison is between Linear and the Nonlinear gate, for which the
 pilot, simulated datasets, posterior architecture, optimizer, training seed,
 and posterior sampling seeds are shared. The two score based arms have context
-dimension \(2d\); the pilot only arm has dimension \(d\).
+dimension $2d$; the pilot only arm has dimension $d$.
 
 Neural posterior estimation is used instead of converting the score into a
 Gaussian approximation because a finite sample posterior may be skewed,
@@ -475,9 +475,9 @@ simulation and pair score construction are substantially more expensive, so a
 the same budget; the numerical budgets are not intended to equate computation
 across different simulators.
 
-Model 1 and Model 2 use a uniform prior for \(\pi\) on \([0.05,0.70]\). The
-max stable experiment uses a uniform prior for \(\boldsymbol\theta\) on
-\([0.15,0.85]^3\). These priors match the Stage 1 reference regions, so Stage 2
+Model 1 and Model 2 use a uniform prior for $\pi$ on $[0.05,0.70]$. The
+max stable experiment uses a uniform prior for $\boldsymbol\theta$ on
+$[0.15,0.85]^3$. These priors match the Stage 1 reference regions, so Stage 2
 does not systematically query a score field outside its training support.
 Uniform priors also give balanced coverage of the controlled design regions
 without adding informative prior structure that could mask differences between
@@ -491,8 +491,8 @@ estimator as the Nonlinear gate, so their contrast isolates the local map. A
 second, supplementary baseline is retained for Model 1 and Model 2 only. It
 bypasses Stage 1 and maps the complete raw dataset directly to a posterior.
 
-For Model 1, the canonical dataset is flattened from \(20\times20\) to 400
-coordinates. For Model 2, it is flattened from \(40\times40\) to 1,600
+For Model 1, the canonical dataset is flattened from $20\times20$ to 400
+coordinates. For Model 2, it is flattened from $40\times40$ to 1,600
 coordinates. The resulting vector is supplied directly to the same family of
 neural posterior estimators. This baseline does not use a pilot, an FSM score,
 an analytic local score, a constructed summary, or the true parameter as an
@@ -516,39 +516,39 @@ diagnostic provenance and are not part of the methodology reported here.
 
 ### 4.1 Data generating process
 
-The complete dataset contains \(K=20\) independent blocks, each with \(m=20\)
-coordinates. For block \(k\) and coordinate \(j\),
+The complete dataset contains $K=20$ independent blocks, each with $m=20$
+coordinates. For block $k$ and coordinate $j$,
 
-\[
+$$
 B_k\sim\operatorname{Bernoulli}(\pi),
 \qquad
 \varepsilon_{kj}\sim\mathcal N(0,1),
-\]
+$$
 
-\[
+$$
 Y_{kj}=\varepsilon_{kj}+B_k\tau,
 \qquad
 \tau=0.5.
-\]
+$$
 
-The scientific parameter is \(\theta=\pi\). Stage 1 uses
+The scientific parameter is $\theta=\pi$. Stage 1 uses
 
-\[
+$$
 \beta=\operatorname{logit}(\pi),
 \qquad
 \beta_0\text{ as the score reference in }\beta\text{ space}.
-\]
+$$
 
 This model is chosen as the simplest setting in which complete block evidence
 is additive but each supplied local score is a bounded nonlinear function of
 that evidence. It isolates information loss caused by pooling without adding
 pairwise dependence. Twenty blocks provide repeated independent contributions,
 while twenty coordinates per block make local pooling nontrivial. The shift
-\(\tau=0.5\) gives moderate local evidence: one coordinate is not decisive, but
+$\tau=0.5$ gives moderate local evidence: one coordinate is not decisive, but
 aggregation across a block is informative.
 
 Reference points follow a continuous stratified design on
-\(\pi\in[0.05,0.70]\). Continuous coverage is needed because Stage 2 pilots
+$\pi\in[0.05,0.70]$. Continuous coverage is needed because Stage 2 pilots
 are not restricted to a small reference grid. Stratification avoids large gaps
 in the learned field while retaining randomization within each stratum.
 
@@ -557,109 +557,109 @@ in the learned field while retaining randomization within each stratum.
 The log likelihood ratio between the active and inactive distributions for one
 coordinate is
 
-\[
+$$
 \ell_{kj}
 =
 \tau Y_{kj}-\frac{1}{2}\tau^2.
-\]
+$$
 
 Conditional independence within a block gives
 
-\[
+$$
 L_k
 =
 \sum_{j=1}^{m}\ell_{kj}.
-\]
+$$
 
 This additive identity makes the information target transparent. If local
-scores could be converted back to \(\ell_{kj}\) before pooling, summation would
-recover \(L_k\). The experiment can therefore separate failure of local
+scores could be converted back to $\ell_{kj}$ before pooling, summation would
+recover $L_k$. The experiment can therefore separate failure of local
 calibration from failure of the block representation.
 
-For a generic log likelihood ratio \(\ell\), define the common mixture score
+For a generic log likelihood ratio $\ell$, define the common mixture score
 link
 
-\[
+$$
 h_{\beta}(\ell)
 =
 \operatorname{sigmoid}(\beta+\ell)
 -
 \operatorname{sigmoid}(\beta).
-\]
+$$
 
 To see why this link appears, write a local mixture density as
 
-\[
+$$
 p(y\mid \beta)
 =
 (1-\pi)f_0(y)+\pi f_1(y),
 \qquad
 \ell(y)=\log\frac{f_1(y)}{f_0(y)}.
-\]
+$$
 
 The conditional probability of the active component is
 
-\[
+$$
 \Pr(B=1\mid y,\beta)
 =
 \operatorname{sigmoid}\{\beta+\ell(y)\}.
-\]
+$$
 
-Differentiating the mixture log likelihood with respect to \(\beta\) gives
+Differentiating the mixture log likelihood with respect to $\beta$ gives
 
-\[
+$$
 \frac{\partial}{\partial \beta}\log p(y\mid \beta)
 =
 \Pr(B=1\mid y,\beta)-\pi
 =
 h_{\beta}\{\ell(y)\}.
-\]
+$$
 
-Thus \(h_{\beta}\) is not an artificial neural feature. It is the exact local
+Thus $h_{\beta}$ is not an artificial neural feature. It is the exact local
 likelihood score in the unconstrained parameter coordinate.
 
-The exact likelihood score with respect to \(\beta\) is
+The exact likelihood score with respect to $\beta$ is
 
-\[
+$$
 S_{\mathrm{exact}}(Y,\beta)
 =
 \sum_{k=1}^{K}h_{\beta}(L_k).
-\]
+$$
 
-The Stage 1 network is not given \(L_k\) or \(S_{\mathrm{exact}}\). It receives
+The Stage 1 network is not given $L_k$ or $S_{\mathrm{exact}}$. It receives
 the local marginal scores
 
-\[
+$$
 s_{kj}(\beta_0)
 =
 h_{\beta_0}(\ell_{kj}).
-\]
+$$
 
 Local scores are used instead of raw log likelihood ratios to match the intended
 composite score workflow and the spatial application, where local scores are
 available but a useful analytic inverse is not generally known. Withholding
-\(L_k\) also prevents the toy model from bypassing the pooling question by
+$L_k$ also prevents the toy model from bypassing the pooling question by
 inserting its exact sufficient statistic.
 
 ### 4.3 Linear and Nonlinear gate implementations
 
 Let
 
-\[
+$$
 z_{kj}(\beta_0)
 =
 \frac{s_{kj}(\beta_0)-\mu_s}{\sigma_s}
-\]
+$$
 
-denote the standardized local score. The Linear arm averages \(z_{kj}\) within
+denote the standardized local score. The Linear arm averages $z_{kj}$ within
 each block. The Nonlinear gate arm, stored under the internal key `radial`, applies
 
-\[
+$$
 z'_{kj}
 =
 z_{kj}
 m_{\eta}(z_{kj},\overline{\beta}_0)
-\]
+$$
 
 before averaging. The multiplier MLP has two hidden layers of width 16. The
 shared readout has two SiLU hidden layers of width 64. Both functions are
@@ -668,7 +668,7 @@ shared across coordinates and blocks.
 After the within block mean is formed, it receives a second affine
 standardization whose constants are fitted on the Linear training features and
 then frozen. The standardized block feature and
-\(\overline{\beta}_0\) enter the shared readout. The Nonlinear gate reuses the
+$\overline{\beta}_0$ enter the shared readout. The Nonlinear gate reuses the
 same frozen block constants, which keeps the downstream coordinates and
 readout architecture matched between arms.
 
@@ -680,21 +680,21 @@ the simulator and prevents coordinate position from becoming an unintended
 source of information.
 
 The nonlinear motivation follows from the inverse of the mixture score link.
-Since \(h_{\beta_0}\) is strictly increasing and
-\(h_{\beta_0}(0)=0\), a raw local score and
+Since $h_{\beta_0}$ is strictly increasing and
+$h_{\beta_0}(0)=0$, a raw local score and
 its log likelihood ratio have the same sign. Moreover,
 
-\[
+$$
 h_{\beta_0}^{-1}(s)
 =
 \operatorname{logit}
 \{\operatorname{sigmoid}(\beta_0)+s\}
 -\beta_0,
-\]
+$$
 
 and therefore
 
-\[
+$$
 h_{\beta_0}^{-1}(s)
 =
 s\,m^{*}(s,\beta_0),
@@ -709,15 +709,15 @@ m^{*}(s,\beta_0)
 \end{cases}
 \qquad
 \pi_0=\operatorname{sigmoid}(\beta_0).
-\]
+$$
 
 The value at zero is the continuous limit. Strict monotonicity of
-\(h_{\beta_0}\) and \(h_{\beta_0}(0)=0\) imply
-\(m^{*}(s,\beta_0)>0\) throughout the admissible local score interval.
+$h_{\beta_0}$ and $h_{\beta_0}(0)=0$ imply
+$m^{*}(s,\beta_0)>0$ throughout the admissible local score interval.
 
 This identity explains why a positive multiplier is a meaningful local
 calibration. The Model 1 implementation applies its gate to the standardized
-coordinate \(z\), not directly to \(s\). The inverse formula is therefore a
+coordinate $z$, not directly to $s$. The inverse formula is therefore a
 motivation for the function class rather than a hard coded recovery map. The
 gate is learned only from the FSM target.
 
@@ -730,18 +730,18 @@ calibration to evaluating a known formula.
 
 The Model 1 pilot uses the marginal composite score
 
-\[
+$$
 S_{\mathrm{pilot}}(Y,\beta)
 =
 \sum_{k=1}^{K}
 \frac{1}{m}
 \sum_{j=1}^{m}h_{\beta}(\ell_{kj}).
-\]
+$$
 
 The score is integrated over the constrained parameter grid, and the global
 maximizer of the resulting composite potential defines
-\(\widehat{\beta}_{\mathrm{pilot}}(Y)\). Multiplication by the positive constant
-\(m\) would not alter the roots or the maximizer.
+$\widehat{\beta}_{\mathrm{pilot}}(Y)$. Multiplication by the positive constant
+$m$ would not alter the roots or the maximizer.
 
 Only marginal components are used because they are cheap, tractable, and
 available under the same restrictions as the Stage 1 representation. The
@@ -754,34 +754,34 @@ supplied to Stage 2 to refine the posterior information.
 
 ### 5.1 Data generating process
 
-The complete dataset contains \(K=40\) independent blocks, each with \(m=40\)
-coordinates. For block \(k\),
+The complete dataset contains $K=40$ independent blocks, each with $m=40$
+coordinates. For block $k$,
 
-\[
+$$
 B_k\sim\operatorname{Bernoulli}(\pi),
 \qquad
 Z_k\sim\mathcal N(0,1),
 \qquad
 \varepsilon_{kj}\sim\mathcal N(0,1),
-\]
+$$
 
-\[
+$$
 Y_{kj}=\varepsilon_{kj}+B_k\tau Z_k,
 \qquad
 \tau=1.
-\]
+$$
 
-When \(B_k=0\), the block covariance is \(\boldsymbol I_m\). When \(B_k=1\),
+When $B_k=0$, the block covariance is $\boldsymbol I_m$. When $B_k=1$,
 the covariance is
 
-\[
+$$
 \boldsymbol I_m
 +
 \tau^2\boldsymbol 1_m\boldsymbol 1_m^{\mathsf T}.
-\]
+$$
 
-Again, \(\theta=\pi\), \(\beta=\operatorname{logit}(\pi)\), and
-\(\beta_0\) denotes a score reference in \(\beta\) space.
+Again, $\theta=\pi$, $\beta=\operatorname{logit}(\pi)$, and
+$\beta_0$ denotes a score reference in $\beta$ space.
 
 This experiment is chosen to separate mean information from dependence
 information. The active component has zero mean, so evidence for activity is
@@ -792,16 +792,16 @@ are therefore genuinely necessary.
 
 Forty independent blocks provide repeated score contributions. A block size of
 forty creates 780 unordered pairs and makes compression within a block much more
-demanding than in Model 1. The choice \(\tau=1\) gives visible dependence
+demanding than in Model 1. The choice $\tau=1$ gives visible dependence
 without making every block state nearly deterministic. Reference points use the same
-continuous stratified range \(\pi\in[0.05,0.70]\), allowing the two mixture
-experiments to share the same interpretation of \(\beta\) and \(\beta_0\).
+continuous stratified range $\pi\in[0.05,0.70]$, allowing the two mixture
+experiments to share the same interpretation of $\beta$ and $\beta_0$.
 
 ### 5.2 Marginal, pairwise, and block likelihood ratios
 
-For a subset of size \(r\), define
+For a subset of size $r$, define
 
-\[
+$$
 c_r
 =
 -\frac{1}{2}\log(1+r\tau^2),
@@ -809,23 +809,23 @@ c_r
 d_r
 =
 \frac{\tau^2}{2(1+r\tau^2)}.
-\]
+$$
 
 The univariate marginal log likelihood ratio is
 
-\[
+$$
 \ell_{ki}^{(1)}
 =
 c_1+d_1Y_{ki}^2.
-\]
+$$
 
 For an unordered coordinate pair,
 
-\[
+$$
 \ell_{k,ij}^{(2)}
 =
 c_2+d_2(Y_{ki}+Y_{kj})^2.
-\]
+$$
 
 These two component types are used because they are the lowest order tractable
 terms that expose the required structure. Marginal terms provide squared
@@ -835,27 +835,27 @@ without being necessary for this controlled mechanism.
 
 Define the block sum
 
-\[
+$$
 T_k
 =
 \sum_{i=1}^{m}Y_{ki}.
-\]
+$$
 
 The complete block log likelihood ratio is
 
-\[
+$$
 L_k
 =
 c_m+d_mT_k^2,
-\]
+$$
 
 and the exact complete likelihood score is
 
-\[
+$$
 S_{\mathrm{exact}}(Y,\beta)
 =
 \sum_{k=1}^{K}h_{\beta}(L_k).
-\]
+$$
 
 This exact score is used only after training for evaluation.
 
@@ -863,54 +863,54 @@ This exact score is used only after training for evaluation.
 
 Let
 
-\[
+$$
 P=\binom{m}{2},
 \qquad
 A_{1k}=\sum_i\ell_{ki}^{(1)},
 \qquad
 A_{2k}=\sum_{i<j}\ell_{k,ij}^{(2)},
-\]
+$$
 
 and let
 
-\[
+$$
 Q_k=\sum_iY_{ki}^2.
-\]
+$$
 
 Then
 
-\[
+$$
 A_{1k}=mc_1+d_1Q_k,
-\]
+$$
 
-\[
+$$
 A_{2k}
 =
 Pc_2+d_2\{(m-2)Q_k+T_k^2\}.
-\]
+$$
 
 It follows that
 
-\[
+$$
 Q_k
 =
 \frac{A_{1k}-mc_1}{d_1},
-\]
+$$
 
-\[
+$$
 T_k^2
 =
 \frac{A_{2k}-Pc_2}{d_2}
 -(m-2)
 \frac{A_{1k}-mc_1}{d_1}.
-\]
+$$
 
 Thus the marginal and pairwise log likelihood ratios jointly contain the
-statistic required to construct \(L_k\). The network is deliberately not given
-\(A_{1k}\), \(A_{2k}\), or this analytic recovery formula. Its local tokens are
+statistic required to construct $L_k$. The network is deliberately not given
+$A_{1k}$, $A_{2k}$, or this analytic recovery formula. Its local tokens are
 the bounded mixture scores
 
-\[
+$$
 s_{ki}^{(1)}(\beta_0)
 =
 h_{\beta_0}\{\ell_{ki}^{(1)}\},
@@ -918,7 +918,7 @@ h_{\beta_0}\{\ell_{ki}^{(1)}\},
 s_{k,ij}^{(2)}(\beta_0)
 =
 h_{\beta_0}\{\ell_{k,ij}^{(2)}\}.
-\]
+$$
 
 Averaging these bounded nonlinear transforms need not preserve the sums of the
 underlying log likelihood ratios. This is the information bottleneck addressed
@@ -934,15 +934,15 @@ using the same type of input available in less tractable models.
 
 Each channel has its own frozen mean and standard deviation. Write
 
-\[
+$$
 z_c
 =
 \frac{s_c-\mu_c}{\sigma_c},
 \qquad
 c\in\{1,2\}.
-\]
+$$
 
-The Linear arm averages \(z_1\) and \(z_2\) separately within each block. The
+The Linear arm averages $z_1$ and $z_2$ separately within each block. The
 two means remain ordered features and are passed with the reference coordinate
 to the shared readout.
 
@@ -957,34 +957,34 @@ marginal scores through count or scale alone. Keeping the pooled channels
 ordered also allows the readout to use their different statistical roles.
 
 The Nonlinear gate arm, stored under the internal key `shared_radial`,
-reconstructs the raw local score \(s_c\) and applies one
+reconstructs the raw local score $s_c$ and applies one
 common scalar multiplier to both channels,
 
-\[
+$$
 s'_c
 =
 s_c\,m_{\eta}(s_c,\overline{\beta}_0),
-\]
+$$
 
 and returns to the standardized coordinate through
 
-\[
+$$
 z'_c
 =
 z_c
 +
 \frac{s_c\{m_{\eta}(s_c,\overline{\beta}_0)-1\}}{\sigma_c}.
-\]
+$$
 
 This correction form is exactly equal to
-\((s'_c-\mu_c)/\sigma_c\), while preserving exact identity nesting when the
+$(s'_c-\mu_c)/\sigma_c$, while preserving exact identity nesting when the
 multiplier equals one. The gate is shared because marginal and pairwise scores
-pass through the same link \(h_{\beta_0}\). The two channels retain separate
+pass through the same link $h_{\beta_0}$. The two channels retain separate
 normalization and separate pooled features, so sharing the gate does not merge
 the channels.
 
 The raw score coordinate is used because both channels are produced by the
-same nonlinear link \(h_{\beta_0}\). A given raw score therefore has the same
+same nonlinear link $h_{\beta_0}$. A given raw score therefore has the same
 inverse link meaning in either channel, whereas a standardized value has a
 different raw meaning under each channel normalization. One shared gate
 encodes this common structure and uses fewer parameters than two unrelated
@@ -998,7 +998,7 @@ not inserted into the network. It is learned, if useful, through the FSM loss.
 
 The Model 2 pilot uses equal weighting of the two channels:
 
-\[
+$$
 S_{\mathrm{pilot}}(Y,\beta)
 =
 \sum_{k=1}^{K}
@@ -1007,13 +1007,13 @@ S_{\mathrm{pilot}}(Y,\beta)
 +
 \frac{1}{P}\sum_{i<j}h_{\beta}\{\ell_{k,ij}^{(2)}\}
 \right].
-\]
+$$
 
 Separate means prevent the pairwise channel from dominating only because it
 contains more tokens. The constrained global maximizer of the integrated
-composite score potential defines \(\widehat{\beta}_{\mathrm{pilot}}(Y)\).
+composite score potential defines $\widehat{\beta}_{\mathrm{pilot}}(Y)$.
 
-The pilot does not use the analytic recovery of \(L_k\). This keeps it a genuine
+The pilot does not use the analytic recovery of $L_k$. This keeps it a genuine
 composite estimator and avoids giving Stage 2 an exact likelihood calculation
 that would be unavailable in the motivating applications. Equal channel
 weighting is a simple fixed rule that prevents the much larger pair count from
@@ -1026,14 +1026,14 @@ deciding the pilot scale by itself.
 One complete dataset contains 47 independent annual maxima fields observed at
 79 Swiss rainfall sites. Dependence is described by a Smith covariance matrix
 
-\[
+$$
 \boldsymbol\Sigma
 =
 \begin{pmatrix}
 \Sigma_{11} & \Sigma_{12}\\
 \Sigma_{12} & \Sigma_{22}
 \end{pmatrix}.
-\]
+$$
 
 Years are treated as blocks because the model regards annual maxima fields as
 independent replicates. Sites are not treated as independent blocks because
@@ -1044,54 +1044,54 @@ selected to favor either neural architecture.
 Positive definiteness is enforced through two positive scales and one
 correlation parameter:
 
-\[
+$$
 \Sigma_{11}=\sigma_x^2,
 \qquad
 \Sigma_{12}=\varrho\sigma_x\sigma_y,
 \qquad
 \Sigma_{22}=\sigma_y^2.
-\]
+$$
 
 This parameterization is used because arbitrary values of the three covariance
 entries need not define a valid covariance matrix. Positive scales and a
-correlation in \((-1,1)\) guarantee positive definiteness by construction. They
+correlation in $(-1,1)$ guarantee positive definiteness by construction. They
 also separate overall dependence ranges in two spatial directions from
 orientation through the correlation term.
 
 Inference is indexed by a bounded normalized parameter
 
-\[
+$$
 \boldsymbol\theta
 =(\theta_1,\theta_2,\theta_3)
 \in[0.15,0.85]^3.
-\]
+$$
 
 Let the reference covariance be
 
-\[
+$$
 (\Sigma_{11,0},\Sigma_{12,0},\Sigma_{22,0})
 =(332.1527,70.3982,184.6266),
-\]
+$$
 
-with reference scales \(\sigma_{x,0}\), \(\sigma_{y,0}\), and reference
-correlation \(\varrho_0\). The normalized parameter maps to the covariance
+with reference scales $\sigma_{x,0}$, $\sigma_{y,0}$, and reference
+correlation $\varrho_0$. The normalized parameter maps to the covariance
 through
 
-\[
+$$
 \sigma_x(\boldsymbol\theta)
 =
 \sigma_{x,0}
 \exp\{0.70(\theta_1-0.5)\},
-\]
+$$
 
-\[
+$$
 \sigma_y(\boldsymbol\theta)
 =
 \sigma_{y,0}
 \exp\{0.70(\theta_2-0.5)\},
-\]
+$$
 
-\[
+$$
 \varrho(\boldsymbol\theta)
 =
 \tanh
@@ -1100,9 +1100,9 @@ through
 +
 1.40(\theta_3-0.5)
 \right].
-\]
+$$
 
-The center \((0.5,0.5,0.5)\) maps exactly to the reference covariance. Seven
+The center $(0.5,0.5,0.5)$ maps exactly to the reference covariance. Seven
 additional marginal simulator parameters are held fixed.
 
 The normalized cube provides a finite scientific design region around a
@@ -1128,7 +1128,7 @@ composite scores helps beyond analytically soluble mixture models.
 
 Each bounded coordinate is mapped to
 
-\[
+$$
 \beta_r
 =
 \operatorname{logit}
@@ -1139,21 +1139,21 @@ Each bounded coordinate is mapped to
 \theta_r
 =
 0.15+0.70\operatorname{sigmoid}(\beta_r).
-\]
+$$
 
-The same general notation now applies: \(\boldsymbol\beta\) is the
-unconstrained coordinate, \(\boldsymbol\beta_0\) is the score reference, and
-\(\widetilde{\boldsymbol\beta}\) is the proposal draw. The proposal is
+The same general notation now applies: $\boldsymbol\beta$ is the
+unconstrained coordinate, $\boldsymbol\beta_0$ is the score reference, and
+$\widetilde{\boldsymbol\beta}$ is the proposal draw. The proposal is
 
-\[
+$$
 \widetilde{\boldsymbol\beta}\mid\boldsymbol\beta_0
 \sim
 \mathcal N
 (\boldsymbol\beta_0,0.20^2\boldsymbol I_3).
-\]
+$$
 
 The shifted and rescaled logit maps the interior of the normalized cube to all
-of \(\mathbb R^3\). This avoids truncated Gaussian proposals and allows Newton
+of $\mathbb R^3$. This avoids truncated Gaussian proposals and allows Newton
 updates in an unconstrained coordinate, while the inverse map always returns a
 valid normalized parameter. An isotropic proposal treats the three transformed
 directions symmetrically and avoids inserting a preferred covariance direction
@@ -1167,10 +1167,10 @@ regions that would otherwise force the amortized field to extrapolate.
 
 ### 6.3 Bivariate score tokens
 
-For year \(t\) and unordered station pair \((i,j)\), the local token is the
+For year $t$ and unordered station pair $(i,j)$, the local token is the
 exact bivariate Smith score
 
-\[
+$$
 \boldsymbol s_{t,ij}(\boldsymbol\beta_0)
 =
 \left.
@@ -1178,7 +1178,7 @@ exact bivariate Smith score
 \log f_{ij}(Y_{ti},Y_{tj}\mid\boldsymbol\beta)
 \right|_{\boldsymbol\beta=\boldsymbol\beta_0}
 \in\mathbb R^3.
-\]
+$$
 
 Each annual field supplies all 3,081 unordered station pair scores. The
 complete 79 site likelihood and its score are unavailable and are never used.
@@ -1193,9 +1193,9 @@ aggregation.
 ### 6.4 Linear and Nonlinear gate implementations
 
 Pair scores are first represented in a frozen coordinate specific to their
-distance bin. If pair \((i,j)\) belongs to bin \(b\), write
+distance bin. If pair $(i,j)$ belongs to bin $b$, write
 
-\[
+$$
 \boldsymbol z_{t,ij}
 =
 \frac{
@@ -1203,13 +1203,13 @@ distance bin. If pair \((i,j)\) belongs to bin \(b\), write
 }{
 \boldsymbol\sigma_b
 }.
-\]
+$$
 
 The Linear arm averages these standardized pair scores without an additional
 local transformation. For the shared gate input, define one global training
 standardization of the raw score,
 
-\[
+$$
 \overline{\boldsymbol s}_{t,ij}
 =
 \frac{
@@ -1217,23 +1217,23 @@ standardization of the raw score,
 }{
 \boldsymbol\sigma_{\mathrm{gate}}
 }.
-\]
+$$
 
 The Nonlinear gate arm, stored under the internal key `positive_anchor`,
 reconstructs the raw score and applies
 
-\[
+$$
 \boldsymbol s'_{t,ij}
 =
 \boldsymbol s_{t,ij}
 \odot
 \boldsymbol m_{\eta}
 (\overline{\boldsymbol s}_{t,ij},\overline{\boldsymbol\beta}_0).
-\]
+$$
 
 It then returns to the bin coordinate through the exact correction
 
-\[
+$$
 \boldsymbol z'_{t,ij}
 =
 \boldsymbol z_{t,ij}
@@ -1245,10 +1245,10 @@ It then returns to the bin coordinate through the exact correction
 }{
 \boldsymbol\sigma_b
 }.
-\]
+$$
 
 This equals
-\((\boldsymbol s'_{t,ij}-\boldsymbol\mu_b)/\boldsymbol\sigma_b\) but reduces
+$(\boldsymbol s'_{t,ij}-\boldsymbol\mu_b)/\boldsymbol\sigma_b$ but reduces
 exactly to the Linear input when the multiplier is one. Applying the multiplier
 in raw score units gives one common numerical meaning to the gate across bins;
 applying it directly to bin standardized values would make an identical gate
@@ -1314,23 +1314,23 @@ depending on the ordering of starting values.
 
 The resulting context is
 
-\[
+$$
 \left(
 \widehat{\boldsymbol\beta}_{\mathrm{pilot}}(Y),
 \widehat{\boldsymbol S}_{\mathrm{frozen}}
 \{Y,\widehat{\boldsymbol\beta}_{\mathrm{pilot}}(Y)\}
 \right)
 \in\mathbb R^6.
-\]
+$$
 
 The current Stage 2 runner trains three posterior estimators on the shared
 simulation bank. The pilot only arm receives the three dimensional context
-\(\widehat{\boldsymbol\beta}_{\mathrm{pilot}}(Y)\). The Linear and Nonlinear
+$\widehat{\boldsymbol\beta}_{\mathrm{pilot}}(Y)$. The Linear and Nonlinear
 gate arms each receive the six dimensional pilot and score context above. The
 two score based arms form the primary matched comparison; the pilot only arm
 quantifies the information added by the frozen score field.
 
-The bounded normalized parameter \(\boldsymbol\theta\) is the NPE target. A
+The bounded normalized parameter $\boldsymbol\theta$ is the NPE target. A
 maximum composite likelihood estimate using all 3,081 pairs is retained only
 as an evaluation comparator.
 
@@ -1367,8 +1367,8 @@ more stable dataset evidence and the controlled diagnostics showed a clear rise
 in smoothing error at wider proposals. The reported widths are fixed before
 exact test evaluation.
 
-All three experiments use learning rate \(10^{-4}\), weight decay
-\(10^{-3}\), gradient clipping at norm 5, gate width 16, readout width 64, and
+All three experiments use learning rate $10^{-4}$, weight decay
+$10^{-3}$, gradient clipping at norm 5, gate width 16, readout width 64, and
 exponential moving average decay 0.995. Model 1 uses a cosine tail learning
 rate schedule. Model 2 uses a constant schedule.
 
@@ -1429,9 +1429,9 @@ general replication claim.
 
 After checkpoint selection, the frozen score field is evaluated against the
 exact complete likelihood score on independent test datasets. Raw score MSE is
-reported at each fixed generating value of \(\pi\). Standardized MSE is
+reported at each fixed generating value of $\pi$. Standardized MSE is
 
-\[
+$$
 \operatorname{stdMSE}(\pi)
 =
 \frac{
@@ -1443,16 +1443,16 @@ reported at each fixed generating value of \(\pi\). Standardized MSE is
 \operatorname{Var}
 \{S_{\mathrm{exact}}(Y,\beta_0)\}
 }.
-\]
+$$
 
-Within a fixed value of \(\pi\), all methods use the same denominator. Raw MSE
+Within a fixed value of $\pi$, all methods use the same denominator. Raw MSE
 therefore gives the direct paired comparison at that parameter value.
 Standardized MSE is useful when averaging across parameter values whose exact
 scores have different scales.
 
 Raw MSE answers the direct approximation question in the natural score units
 at one fixed truth. It should not be averaged naively across truths because the
-variance of the exact score changes with \(\pi\). Dividing by that variance
+variance of the exact score changes with $\pi$. Dividing by that variance
 produces a dimensionless error and prevents parameter regions with intrinsically
 larger scores from dominating the aggregate. Both forms are retained because
 standardization improves comparability but hides the original error scale.
@@ -1484,11 +1484,11 @@ An exact 79 site posterior is unavailable. Synthetic evaluation instead uses
 known generating parameters and a scientifically interpretable dependence
 function. At each of three fixed normalized truths, 100 paired datasets are
 generated. Posterior mean MSE is reported separately for
-\(\Sigma_{11}\), \(\Sigma_{12}\), and \(\Sigma_{22}\) on the original
+$\Sigma_{11}$, $\Sigma_{12}$, and $\Sigma_{22}$ on the original
 covariance scale.
 
-The three truths \((0.25,0.25,0.25)\), \((0.50,0.50,0.50)\), and
-\((0.75,0.75,0.75)\) probe the lower region, the reference center, and the
+The three truths $(0.25,0.25,0.25)$, $(0.50,0.50,0.50)$, and
+$(0.75,0.75,0.75)$ probe the lower region, the reference center, and the
 upper region of the design. Reporting each covariance entry separately avoids
 hiding a difficult parameter behind a pooled three dimensional error. The
 original covariance scale is used because it has direct scientific meaning,
@@ -1500,9 +1500,9 @@ edge. One hundred datasets at each truth provide paired Monte Carlo comparisons
 while keeping the expensive spatial simulation and posterior sampling workload
 feasible.
 
-For displacement \(\boldsymbol h\), the Smith extremal coefficient is
+For displacement $\boldsymbol h$, the Smith extremal coefficient is
 
-\[
+$$
 \delta_{\boldsymbol\Sigma}(\boldsymbol h)
 =
 2\Phi
@@ -1514,7 +1514,7 @@ For displacement \(\boldsymbol h\), the Smith extremal coefficient is
 \boldsymbol h
 }
 \right].
-\]
+$$
 
 Its integrated squared error is evaluated on a fixed grid containing 12 radii
 and 8 directions. Paired bootstrap intervals use the difference between
