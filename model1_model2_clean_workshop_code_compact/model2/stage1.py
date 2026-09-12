@@ -37,6 +37,8 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
+from model1.stage1 import load_matched_linear_rho
+
 
 def sigmoid_np(x: np.ndarray | float) -> np.ndarray:
     x_arr = np.asarray(x, dtype=np.float64)
@@ -384,7 +386,82 @@ class SharedRawRadialCSBetaDeepSets(nn.Module):
         return self.rho(x).squeeze(-1).sum(dim=1)
 
 
+class LocalFeatureMLP(nn.Module):
+    """Unbounded learned channel m(s, a) in R^m_dim, initially identically zero.
+
+    Consumes the raw local score, matching the gate's input convention, so the
+    only difference between the two nonlinear maps is stacking versus
+    elementwise multiplication.
+    """
+
+    def __init__(self, hidden: int, m_dim: int = 1):
+        super().__init__()
+        if m_dim < 1:
+            raise ValueError("m_dim must be positive")
+        self.net = nn.Sequential(
+            nn.Linear(2, hidden), nn.SiLU(),
+            nn.Linear(hidden, hidden), nn.SiLU(), nn.Linear(hidden, m_dim),
+        )
+        nn.init.zeros_(self.net[-1].weight)
+        nn.init.zeros_(self.net[-1].bias)
+
+    def forward(self, s: torch.Tensor, anchor: torch.Tensor) -> torch.Tensor:
+        return self.net(torch.stack((s, anchor), dim=-1))
+
+
+class StackedCSBetaDeepSets(nn.Module):
+    """phi(s, a) = (1, s, m(s, a)) for the marginal and pairwise channels.
+
+    ``share_local_features`` selects the Model-2-specific question: one learned
+    map shared by both channel types, as the multiplicative gate does, or one
+    per type. The identity channels reuse the existing standardized ``block``
+    feature verbatim, so ILSA nesting is exact rather than approximate.
+    """
+
+    def __init__(self, hidden: int, depth: int, gate_hidden: int,
+                 s1_mean, s1_sd, s2_mean, s2_sd,
+                 m_dim: int = 1, include_constant_channel: bool = True,
+                 share_local_features: bool = True):
+        super().__init__()
+        self.m_dim = int(m_dim)
+        self.include_constant_channel = bool(include_constant_channel)
+        self.share_local_features = bool(share_local_features)
+        self.local_features = LocalFeatureMLP(gate_hidden, self.m_dim)
+        self.local_features_pairwise = (
+            None if self.share_local_features else LocalFeatureMLP(gate_hidden, self.m_dim)
+        )
+        width = int(self.include_constant_channel) + 2 + 2 * self.m_dim + 1
+        self.rho = make_rho(width, hidden, depth)
+        for key, value in (("s1_mean", s1_mean), ("s1_sd", s1_sd),
+                           ("s2_mean", s2_mean), ("s2_sd", s2_sd)):
+            self.register_buffer(key, torch.as_tensor(value, dtype=torch.float32))
+
+    @property
+    def linear_column_map(self) -> tuple[int, int, int]:
+        off = int(self.include_constant_channel)
+        return off, off + 1, off + 2 + 2 * self.m_dim
+
+    def _pairwise_module(self) -> nn.Module:
+        return self.local_features if self.share_local_features else self.local_features_pairwise
+
+    def readout_inputs(self, block, s1, s2, anchor_z):
+        raw1 = s1 * self.s1_sd + self.s1_mean
+        raw2 = s2 * self.s2_sd + self.s2_mean
+        a1 = anchor_z.reshape(-1, 1, 1).expand_as(raw1)
+        a2 = anchor_z.reshape(-1, 1, 1).expand_as(raw2)
+        pooled1 = self.local_features(raw1, a1).mean(dim=2)
+        pooled2 = self._pairwise_module()(raw2, a2).mean(dim=2)
+        anchor = anchor_z.reshape(-1, 1, 1).expand(-1, block.shape[1], 1)
+        parts = [torch.ones_like(block[..., :1])] if self.include_constant_channel else []
+        return torch.cat([*parts, block, pooled1, pooled2, anchor], dim=-1)
+
+    def forward(self, block, s1, s2, anchor_z):
+        return self.rho(self.readout_inputs(block, s1, s2, anchor_z)).squeeze(-1).sum(dim=1)
+
+
 GATED_METHODS = {"shared_radial"}
+STACKED_METHODS = {"stacked_shared", "stacked_split"}
+NONLINEAR_METHODS = GATED_METHODS | STACKED_METHODS
 SELECTED_GATE_CONDITION_ON_ANCHOR = True
 SELECTED_RADIAL_INIT = "matched_random"
 SELECTED_GATE_ONLY_STEPS = 0
@@ -395,6 +472,8 @@ def tensors_for_method(data: dict[str, np.ndarray], method: str, device: str) ->
         keys = ("block", "anchor_z")
     elif method in GATED_METHODS:
         keys = ("s1", "s2", "anchor_z")
+    elif method in STACKED_METHODS:
+        keys = ("block", "s1", "s2", "anchor_z")
     else:
         raise ValueError(f"Unknown method: {method}")
     return {key: torch.as_tensor(data[key], dtype=torch.float32, device=device) for key in keys}
@@ -405,6 +484,8 @@ def forward_method(model: nn.Module, batch: dict[str, torch.Tensor], method: str
         return model(batch["block"], batch["anchor_z"])
     if method in GATED_METHODS:
         return model(batch["s1"], batch["s2"], batch["anchor_z"])
+    if method in STACKED_METHODS:
+        return model(batch["block"], batch["s1"], batch["s2"], batch["anchor_z"])
     raise ValueError(f"Unknown method: {method}")
 
 
@@ -527,8 +608,12 @@ def train_model(
     x_val = tensors_for_method(val, method, device)
     y_train = torch.as_tensor(train["target"], dtype=torch.float32, device=device)
     y_val = torch.as_tensor(val["target"], dtype=torch.float32, device=device)
-    if method in GATED_METHODS:
-        gate_params = list(model.shared_gate.parameters())
+    if method in NONLINEAR_METHODS:
+        gate_params = list(
+            model.shared_gate.parameters() if method in GATED_METHODS
+            else (m for module in (model.local_features, model.local_features_pairwise)
+                  if module is not None for m in module.parameters())
+        )
         rho_params = list(model.rho.parameters())
         opt = torch.optim.AdamW(
             [
@@ -557,7 +642,7 @@ def train_model(
             lr_decay_start_step,
             lr_min_ratio,
         )
-        if method in GATED_METHODS:
+        if method in NONLINEAR_METHODS:
             opt.param_groups[0]["lr"] = base_lrs["gate"] * multiplier
             opt.param_groups[1]["lr"] = base_lrs["rho"] * multiplier
         else:
@@ -565,7 +650,7 @@ def train_model(
         return multiplier
 
     def trace_learning_rates() -> dict[str, float | str]:
-        if method in GATED_METHODS:
+        if method in NONLINEAR_METHODS:
             return {
                 "lr_model": "",
                 "lr_gate": float(opt.param_groups[0]["lr"]),
@@ -970,10 +1055,10 @@ def run(args: argparse.Namespace) -> None:
     print("local marginal/pairwise:", train["s1"].shape, train["s2"].shape)
 
     methods = [m.strip() for m in args.methods.split(",") if m.strip()]
-    bad = sorted(set(methods) - ({"linear"} | GATED_METHODS))
+    bad = sorted(set(methods) - ({"linear"} | NONLINEAR_METHODS))
     if bad:
         raise ValueError(f"Unknown methods: {bad}")
-    gated_methods_requested = set(methods) & GATED_METHODS
+    gated_methods_requested = set(methods) & NONLINEAR_METHODS
     config = vars(args).copy()
     config["gate_condition_on_anchor"] = SELECTED_GATE_CONDITION_ON_ANCHOR
     config["radial_init"] = SELECTED_RADIAL_INIT
@@ -1047,7 +1132,8 @@ def run(args: argparse.Namespace) -> None:
             device,
             args.batch_size,
         )
-    for method in (candidate for candidate in ("linear", "shared_radial") if candidate in methods):
+    ordered = ("linear", "shared_radial", "stacked_shared", "stacked_split")
+    for method in (candidate for candidate in ordered if candidate in methods):
         if method == "linear":
             label = "linear CS beta-conditioned DeepSets FSM"
             set_global_seed(args.seed + 11)
@@ -1056,6 +1142,32 @@ def run(args: argparse.Namespace) -> None:
                 linear_initial_rho_state = clone_state_dict(model.rho, cpu=True)
                 model = model.to(device)
                 linear_initial_check = predict(model, check_data, "linear", device, args.batch_size)
+        elif method in STACKED_METHODS:
+            shared = method == "stacked_shared"
+            label = ("stacked NLSA local map (shared)" if shared
+                     else "stacked NLSA local map (per-channel)")
+            set_global_seed(args.seed + (33 if shared else 44))
+            model = StackedCSBetaDeepSets(
+                args.hidden, args.depth, args.gate_hidden,
+                s1_mean=stats["s1_mean"], s1_sd=stats["s1_sd"],
+                s2_mean=stats["s2_mean"], s2_sd=stats["s2_sd"],
+                m_dim=args.m_dim,
+                include_constant_channel=bool(args.include_constant_channel),
+                share_local_features=shared,
+            )
+            nesting_error = None
+            if linear_initial_rho_state is None or linear_initial_check is None:
+                raise RuntimeError("matched_random requires the saved initial linear rho")
+            load_matched_linear_rho(
+                model.rho, linear_initial_rho_state, model.linear_column_map,
+                constant_column=0 if model.include_constant_channel else None,
+            )
+            reference_check = linear_initial_check
+            label = f"{label} [matched_random]"
+            print(f"{method} initialization: matched untrained linear rho, m == 0")
+            model = model.to(device)
+            gated_check = predict(model, check_data, method, device, args.batch_size)
+            nesting_error = float(np.max(np.abs(reference_check - gated_check)))
         else:
             label = "shared-raw-gate CS beta-conditioned gate+DeepSets FSM"
             set_global_seed(args.seed + 22)
@@ -1121,9 +1233,11 @@ def run(args: argparse.Namespace) -> None:
         info["method"] = method
         info["label"] = label
         info["initial_state_sha256"] = initial_state_fingerprint
-        if method in GATED_METHODS:
+        if method in NONLINEAR_METHODS:
             info["initialization"] = SELECTED_RADIAL_INIT
-            info["gate_sharing"] = "shared"
+            info["local_map"] = ("multiplicative_gate" if method in GATED_METHODS
+                                 else "stacked_(1,s,m)")
+            info["gate_sharing"] = "shared" if method != "stacked_split" else "per_channel"
             info["gate_input_scale"] = "raw_local_score"
             if nesting_error is not None:
                 info["nested_initialization_max_abs_diff"] = nesting_error
@@ -1270,6 +1384,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--hidden", type=int, default=64)
     parser.add_argument("--depth", type=int, default=2)
     parser.add_argument("--gate-hidden", type=int, default=16)
+    parser.add_argument("--m-dim", type=int, default=1,
+                        help="Learned-channel width for the stacked local map.")
+    parser.add_argument("--include-constant-channel", type=int, choices=(0, 1), default=1)
     parser.add_argument("--iters", type=int, default=20_000)
     parser.add_argument("--batch-size", type=int, default=512)
     parser.add_argument("--lr", type=float, default=1e-4, help="Linear-model learning rate.")

@@ -35,12 +35,16 @@ METHOD_LABELS = {
     "pilot": "pilot-only NPE",
     "linear": "linear FSM pilot+score NPE",
     "shared_radial": "shared-raw-gate FSM pilot+score NPE",
+    "stacked_shared": "stacked NLSA (shared) FSM pilot+score NPE",
+    "stacked_split": "stacked NLSA (per-channel) FSM pilot+score NPE",
 }
 
 METHOD_SEED_INDEX = {
     "linear": 0,
     "shared_radial": 1,
     "pilot": 2,
+    "stacked_shared": 3,
+    "stacked_split": 4,
 }
 
 SELECTED_PILOT_MODE = "equal_channel"

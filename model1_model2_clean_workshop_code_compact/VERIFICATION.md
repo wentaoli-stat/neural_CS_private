@@ -14,7 +14,7 @@ python scripts/summarize_results.py
 
 - Python compile/import：Model 1 和 Model 2 的 Stage 1、runtime、Stage 2、NPE helper 全部可导入。
 - launcher：六个 shell script 全部通过 `bash -n`。
-- method surface：Model 1 仅暴露 `linear/radial`，Model 2 仅暴露 `linear/shared_radial`；另有 data-only `pilot`、naive `flatten(Y)` 和 raw-FSM representation baselines。
+- method surface：Model 1 Stage 1 支持 `linear/radial/stacked`，Stage 2 仍为 `linear/radial`；Model 2 仍为 `linear/shared_radial`；另有 data-only `pilot`、naive `flatten(Y)` 和 raw-FSM representation baselines。
 - legacy closure：新版源码没有 import 旧 fixed-center、two-stage monolith、Mode-A、Jiang、anchor-score 或 score-only 文件。
 - frozen runtime：打包的 Model 1/2 Linear/Nonlinear-gate validation-best/fixed-20k checkpoints 均通过 forward replay、finite-difference derivative、block permutation 和 within-block permutation checks；对应内部键分别为 `radial` 与 `shared_radial`。
 - Model 2 fixed policy：显式 checkpoint 必须同时满足 `selection=fixed_milestone`、`checkpoint_source=ema` 和 `checkpoint_step=config.iters=20000`。
@@ -31,5 +31,23 @@ python scripts/summarize_results.py
 - 按路径排序；
 - 覆盖所有交付文件但不包含自身；
 - 可由 `scripts/verify_package.py` 在 macOS/Linux 一致校验。
+- 不包含生成的 `runs/`、Python/test caches、SBI logs 或 Finder `.DS_Store`。
+
+## Stacked initialization and compatibility checks
+
+The new Model-1 tests check zero initial learned features, nonzero learned-feature
+readout weights, matched ILSA predictions for scalar/vector features and with/without
+the constant channel, successive-step gradient flow without weight decay,
+permutation invariance, checkpoint/runtime replay, raw-only checkpoint selection,
+and a small three-method training/evaluation cycle. Existing packaged-runtime and
+artifact-contract tests remain unchanged. A separate five-step regression against
+the pre-change source confirms bitwise-identical legacy Linear/radial weights and
+training traces with the unchanged default checkpoint policy.
+
+Before this extension, all 32 baseline tests passed; the original manifest failed
+on the pre-existing methodology hash mismatch and `.DS_Store`. The methodology
+content is preserved, its manifest digest is refreshed, and Finder metadata is
+excluded. No artifact is rehashed to conceal a content change: all archived
+artifact digests must still equal their pre-change values.
 
 原始 artifact `config.json` 中可能保留远端绝对路径，这是运行 provenance，不是 portable launcher 参数。可移植的 parent/checkpoint 关系由 `manifest/selections.json` 给出。

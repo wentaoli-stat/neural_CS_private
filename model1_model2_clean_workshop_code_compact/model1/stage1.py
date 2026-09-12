@@ -21,10 +21,12 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import math
 import os
 import random
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -70,7 +72,20 @@ ARCHITECTURES: dict[str, ArchSpec] = {
         label="radial CS beta-conditioned gate+DeepSets FSM",
         warm_start_from="linear",
     ),
+    "stacked": ArchSpec(
+        input_keys=("block", "s", "anchor_z"),
+        needs_subscores=True,
+        needs_raw_y=False,
+        within_block_perm_invariant=True,
+        parameter_input="anchor_z",
+        seed_offset=33,
+        label="stacked NLSA local map",
+        warm_start_from="linear",
+    ),
 }
+
+M_POOL_SCALES = ("none", "block_sd")
+M_PARAMETRIZATIONS = ("free", "score_scaled")
 
 SELECTED_GATE_CONDITION_ON_ANCHOR = True
 SELECTED_RADIAL_INIT = "matched_random"
@@ -279,6 +294,142 @@ def make_rho(in_dim: int, hidden: int, depth: int) -> nn.Sequential:
     return nn.Sequential(*layers)
 
 
+class LocalFeatureMLP(nn.Module):
+    """Unbounded anchor-conditioned features, initially identically zero.
+
+    ``parametrization`` selects how the learned channel is written:
+
+    ``free``
+        ``m(s, a) = MLP(s, a)``, the form in Appendix I.1.
+    ``score_scaled``
+        ``m(s, a) = s * MLP(s, a)``.
+
+    Both start at ``m == 0`` and so nest ILSA exactly, but they have very
+    different gradients there. With mean pooling, ``d(pooled m)/d m_j`` is the
+    constant ``1/m`` for every local score in a block, so under ``free`` the
+    whole initial learning signal reaching the MLP output layer is one scalar
+    per block: the fastest-learned component is an ``s``-independent constant,
+    which the readout's biases can already represent. Writing the factor ``s``
+    explicitly makes ``d m_j / d MLP_j = s_j``, restoring the ``s``-dependent
+    gradient that the multiplicative gate gets for free. It forces
+    ``m(0, a) = 0``, which matches the local inverse link ``h_a^{-1}(0) = 0``.
+
+    ``init_std`` > 0 perturbs the output layer instead, trading exact ILSA
+    nesting for immediate ``s``-dependence; the realized deviation is measured
+    and reported by the caller rather than assumed negligible.
+    """
+
+    def __init__(self, hidden: int, m_dim: int = 1, parametrization: str = "free",
+                 init_std: float = 0.0):
+        super().__init__()
+        if m_dim < 1:
+            raise ValueError("m_dim must be positive")
+        if parametrization not in M_PARAMETRIZATIONS:
+            raise ValueError(f"Unknown m parametrization: {parametrization}")
+        if init_std < 0:
+            raise ValueError("init_std must be non-negative")
+        self.parametrization = str(parametrization)
+        self.init_std = float(init_std)
+        self.net = nn.Sequential(
+            nn.Linear(2, hidden), nn.SiLU(),
+            nn.Linear(hidden, hidden), nn.SiLU(), nn.Linear(hidden, m_dim),
+        )
+        if self.init_std > 0:
+            nn.init.normal_(self.net[-1].weight, std=self.init_std)
+        else:
+            nn.init.zeros_(self.net[-1].weight)
+        nn.init.zeros_(self.net[-1].bias)
+
+    def forward(self, s: torch.Tensor, anchor: torch.Tensor) -> torch.Tensor:
+        out = self.net(torch.stack((s, anchor), dim=-1))
+        if self.parametrization == "score_scaled":
+            out = out * s.unsqueeze(-1)
+        return out
+
+
+def load_matched_linear_rho(
+    stacked_rho: nn.Sequential,
+    linear_state: dict[str, torch.Tensor],
+    column_map: tuple[int, ...],
+    constant_column: int | None = None,
+) -> None:
+    """Embed a saved linear rho while retaining seeded nonzero m columns.
+
+    ``column_map[j]`` is the destination column of linear input j. Since
+    m=0, its ordinary random readout columns preserve ILSA predictions and
+    transmit gradients into m. Zeroing BOTH would disable that branch.
+    """
+    state = stacked_rho.state_dict()
+    source = linear_state["0.weight"]
+    first = state["0.weight"].clone()
+    if (len(column_map) != source.shape[1]
+            or len(set(column_map)) != len(column_map)
+            or any(i < 0 or i >= first.shape[1] for i in column_map)):
+        raise ValueError("column_map must map every linear input to a distinct valid column")
+    if constant_column is not None:
+        if constant_column in column_map or not 0 <= constant_column < first.shape[1]:
+            raise ValueError("constant column must be distinct from mapped columns")
+        first[:, constant_column] = 0
+    first[:, list(column_map)] = source.to(first)
+    for key in state:
+        state[key] = first if key == "0.weight" else linear_state[key].clone()
+    stacked_rho.load_state_dict(state, strict=True)
+
+
+class StackedCSBetaDeepSets(nn.Module):
+    """Mean-pool (1, s, m(s,a)), then sum shared block readouts."""
+
+    def __init__(self, hidden: int, depth: int, gate_hidden: int,
+                 m_dim: int = 1, include_constant_channel: bool = True,
+                 m_pool_scale: str = "none", block_sd: np.ndarray | None = None,
+                 m_parametrization: str = "free", m_init_std: float = 0.0):
+        super().__init__()
+        if m_pool_scale not in M_POOL_SCALES:
+            raise ValueError(f"Unknown m_pool_scale: {m_pool_scale}")
+        self.include_constant_channel = bool(include_constant_channel)
+        self.m_dim = int(m_dim)
+        self.m_pool_scale = str(m_pool_scale)
+        self.local_features = LocalFeatureMLP(
+            gate_hidden, self.m_dim, m_parametrization, m_init_std,
+        )
+        self.rho = make_rho(int(self.include_constant_channel) + 2 + self.m_dim, hidden, depth)
+        # Registered only when used, so that default-configuration checkpoints
+        # keep the state_dict they had before this option existed.
+        if self.m_pool_scale == "block_sd":
+            if block_sd is None:
+                raise ValueError("m_pool_scale='block_sd' requires the block_sd feature statistic")
+            self.register_buffer(
+                "m_pool_divisor", torch.as_tensor(block_sd, dtype=torch.float32)
+            )
+
+    @property
+    def linear_column_map(self) -> tuple[int, int]:
+        offset = int(self.include_constant_channel)
+        return offset, offset + 1 + self.m_dim
+
+    def learned_features(self, s: torch.Tensor, anchor_z: torch.Tensor) -> torch.Tensor:
+        anchor = anchor_z.reshape(-1, 1, 1).expand_as(s)
+        return self.local_features(s, anchor)
+
+    def readout_inputs(self, block: torch.Tensor, s: torch.Tensor,
+                       anchor_z: torch.Tensor) -> torch.Tensor:
+        pooled = self.learned_features(s, anchor_z).mean(dim=2)
+        if self.m_pool_scale == "block_sd":
+            # Put the learned channel on the same footing as the identity
+            # channel, which featurize() already divided by this constant.
+            # m == 0 at initialization, so this cannot disturb ILSA nesting.
+            pooled = pooled / self.m_pool_divisor.reshape(1, 1, -1)
+        anchor = anchor_z.reshape(-1, 1, 1).expand(-1, block.shape[1], 1)
+        # The identity channel is the exact existing linear input, not a
+        # recomputation from local scores. The constant is a pooled mean of 1.
+        parts = [torch.ones_like(block)] if self.include_constant_channel else []
+        return torch.cat([*parts, block, pooled, anchor], dim=-1)
+
+    def forward(self, block: torch.Tensor, s: torch.Tensor,
+                anchor_z: torch.Tensor) -> torch.Tensor:
+        return self.rho(self.readout_inputs(block, s, anchor_z)).squeeze(-1).sum(dim=1)
+
+
 class LinearCSBetaDeepSets(nn.Module):
     """DeepSets readout over block-level linear CS, conditioned on anchor beta."""
 
@@ -340,6 +491,16 @@ def build_model(
             gate_condition_on_anchor=bool(config.get("gate_condition_on_anchor", 0)),
             block_mean=stats["block_mean"],
             block_sd=stats["block_sd"],
+        )
+    if method == "stacked":
+        return StackedCSBetaDeepSets(
+            int(config["hidden"]), int(config["depth"]), int(config["gate_hidden"]),
+            m_dim=int(config.get("m_dim", 1)),
+            include_constant_channel=bool(config.get("include_constant_channel", 1)),
+            m_pool_scale=str(config.get("m_pool_scale", "none")),
+            block_sd=stats["block_sd"],
+            m_parametrization=str(config.get("m_parametrization", "free")),
+            m_init_std=float(config.get("m_init_std", 0.0)),
         )
     raise ValueError(f"Unknown method: {method}")
 
@@ -460,7 +621,11 @@ def train_model(
     lr_min_ratio: float,
     device: str,
     name: str,
+    checkpoint_selection: str = "raw_or_ema",
 ) -> tuple[nn.Module, list[dict[str, Any]], dict[str, Any]]:
+    started = time.perf_counter()
+    if checkpoint_selection not in {"raw", "raw_or_ema"}:
+        raise ValueError("unknown checkpoint selection policy")
     if lr_schedule == "cosine_tail" and not (0 <= lr_decay_start_step < iters):
         raise ValueError(
             "cosine_tail requires 0 <= lr_decay_start_step < the method iteration budget"
@@ -470,8 +635,8 @@ def train_model(
     x_val = tensors_for_method(val, method, device)
     y_train = torch.as_tensor(train["target"], dtype=torch.float32, device=device)
     y_val = torch.as_tensor(val["target"], dtype=torch.float32, device=device)
-    if method == "radial":
-        gate_params = list(model.gate.parameters())
+    if method in {"radial", "stacked"}:
+        gate_params = list((model.local_features if method == "stacked" else model.gate).parameters())
         rho_params = list(model.rho.parameters())
         opt = torch.optim.AdamW(
             [
@@ -500,7 +665,7 @@ def train_model(
             lr_decay_start_step,
             lr_min_ratio,
         )
-        if method == "radial":
+        if method in {"radial", "stacked"}:
             opt.param_groups[0]["lr"] = base_lrs["gate"] * multiplier
             opt.param_groups[1]["lr"] = base_lrs["rho"] * multiplier
         else:
@@ -508,7 +673,7 @@ def train_model(
         return multiplier
 
     def trace_learning_rates() -> dict[str, float | str]:
-        if method == "radial":
+        if method in {"radial", "stacked"}:
             return {
                 "lr_model": "",
                 "lr_gate": float(opt.param_groups[0]["lr"]),
@@ -520,8 +685,20 @@ def train_model(
             "lr_rho": "",
         }
 
+    @torch.no_grad()
+    def feature_diagnostics() -> dict[str, float]:
+        if method != "stacked":
+            return {}
+        # Fixed, target-free validation subset; diagnostics never select weights.
+        m = model.learned_features(x_val["s"][:256], x_val["anchor_z"][:256])
+        pooled = m.mean(dim=2)
+        return {"m_max_abs": float(m.abs().max()),
+                "pooled_m_rms": float(pooled.square().mean().sqrt()),
+                "pooled_m_sd": float(pooled.std(unbiased=False))}
+
     set_step_learning_rates(0)
     rng = np.random.default_rng(seed)
+    minibatch_digest = hashlib.sha256()
     best_state = clone_state_dict(model, cpu=True)
     ema_state = clone_state_dict(model, cpu=False)
     best_val = mse_over_tensors(model, x_val, y_val, method, batch_size)
@@ -540,6 +717,7 @@ def train_model(
             "best_val_loss": best_val,
             "best_source": best_source,
             **trace_learning_rates(),
+            **feature_diagnostics(),
         }
     ]
     bad = 0
@@ -548,8 +726,10 @@ def train_model(
 
     for step in range(1, iters + 1):
         lr_multiplier = set_step_learning_rates(step)
+        indices = rng.integers(0, n_train, size=min(batch_size, n_train))
+        minibatch_digest.update(indices.tobytes())
         idx = torch.as_tensor(
-            rng.integers(0, n_train, size=min(batch_size, n_train)),
+            indices,
             dtype=torch.long,
             device=device,
         )
@@ -577,7 +757,7 @@ def train_model(
             model.load_state_dict(raw_state)
             if not np.isfinite(val_loss_raw) or not np.isfinite(val_loss_ema):
                 raise RuntimeError(f"{name} produced non-finite validation loss at step {step}")
-            if val_loss_ema < val_loss_raw:
+            if checkpoint_selection == "raw_or_ema" and val_loss_ema < val_loss_raw:
                 selected_val = val_loss_ema
                 selected_source = "ema"
                 selected_state = {key: value.detach().cpu().clone() for key, value in ema_state.items()}
@@ -597,6 +777,7 @@ def train_model(
                     "best_source": selected_source if selected_val < best_val else best_source,
                     "grad_norm": float(grad_norm.detach().cpu().item()),
                     **trace_learning_rates(),
+                    **feature_diagnostics(),
                 }
             )
             lr_values = "/".join(f"{group['lr']:.3g}" for group in opt.param_groups)
@@ -627,6 +808,10 @@ def train_model(
         "lr_decay_start_step": lr_decay_start_step,
         "lr_min_ratio": lr_min_ratio,
         "final_learning_rates": trace_learning_rates(),
+        "checkpoint_selection": checkpoint_selection,
+        "minibatch_sha256": minibatch_digest.hexdigest(),
+        "wall_seconds": time.perf_counter() - started,
+        "trainable_parameters": sum(p.numel() for p in model.parameters()),
     }
     return model, trace, info
 
@@ -738,6 +923,8 @@ def run(args: argparse.Namespace) -> None:
         raise ValueError("--lr-min-ratio must lie in (0, 1]")
     if args.iters <= 0:
         raise ValueError("--iters must be positive")
+    if args.m_dim < 1:
+        raise ValueError("--m-dim must be positive")
     methods = [m.strip() for m in args.methods.split(",") if m.strip()]
     bad = sorted(set(methods) - set(ARCHITECTURES))
     if bad:
@@ -833,6 +1020,12 @@ def run(args: argparse.Namespace) -> None:
     config["heldout_evaluation_rng_state"] = rng.bit_generator.state
     config["exact_evaluation_separated"] = True
     config["exact_score_available_to_checkpoint_selection"] = False
+    config["software"] = {"torch": str(torch.__version__), "numpy": np.__version__}
+    config["shared_data_sha256"] = {
+        f"{split}_{key}": hashlib.sha256(np.ascontiguousarray(raw[key]).tobytes()).hexdigest()
+        for split, raw in (("train", train_raw), ("validation", val_raw))
+        for key in ("y", "anchor_u", "target")
+    }
     (out_dir / "config.json").write_text(json.dumps(config, indent=2), encoding="utf-8")
     np.savez(
         out_dir / "feature_stats.npz",
@@ -847,7 +1040,8 @@ def run(args: argparse.Namespace) -> None:
     linear_initial_check: np.ndarray | None = None
     check_n = min(256, int(train["target"].shape[0]))
     check_data = {key: value[:check_n] for key, value in train.items()}
-    if "radial" in methods and "linear" not in methods:
+    needs_linear_init = any(ARCHITECTURES[m].warm_start_from == "linear" for m in methods)
+    if needs_linear_init and "linear" not in methods:
         set_global_seed(args.seed + ARCHITECTURES["linear"].seed_offset)
         initial_linear_reference = build_model("linear", config, stats)
         linear_initial_rho_state = clone_state_dict(initial_linear_reference.rho, cpu=True)
@@ -859,13 +1053,13 @@ def run(args: argparse.Namespace) -> None:
             device,
             args.batch_size,
         )
-    for method in (candidate for candidate in ("linear", "radial") if candidate in methods):
+    for method in (candidate for candidate in ARCHITECTURES if candidate in methods):
         spec = ARCHITECTURES[method]
         if method == "linear":
             label = spec.label
             set_global_seed(args.seed + spec.seed_offset)
             model = build_model(method, config, stats)
-            if "radial" in methods:
+            if needs_linear_init:
                 linear_initial_rho_state = clone_state_dict(model.rho, cpu=True)
                 model = model.to(device)
                 linear_initial_check = predict(
@@ -875,25 +1069,34 @@ def run(args: argparse.Namespace) -> None:
                     device,
                     args.batch_size,
                 )
-        elif method == "radial":
+        elif method in {"radial", "stacked"}:
             label = spec.label
             set_global_seed(args.seed + spec.seed_offset)
             model = build_model(method, config, stats)
             nesting_error: float | None = None
             if linear_initial_rho_state is None or linear_initial_check is None:
                 raise RuntimeError("matched_random requires the saved initial linear rho")
-            model.rho.load_state_dict(linear_initial_rho_state)
+            if method == "stacked":
+                load_matched_linear_rho(
+                    model.rho, linear_initial_rho_state, model.linear_column_map,
+                    constant_column=0 if model.include_constant_channel else None,
+                )
+            else:
+                model.rho.load_state_dict(linear_initial_rho_state)
             model = model.to(device)
-            radial_check = predict(model, check_data, "radial", device, args.batch_size)
+            radial_check = predict(model, check_data, method, device, args.batch_size)
             nesting_error = float(np.max(np.abs(linear_initial_check - radial_check)))
             print(f"matched random initialization max abs diff: {nesting_error:.3e}")
-            if nesting_error > 1e-5:
+            # --m-init-std deliberately perturbs the learned channel, so exact
+            # nesting is not expected there; the deviation is reported instead.
+            approximate_nesting = method == "stacked" and args.m_init_std > 0
+            if nesting_error > 1e-5 and not approximate_nesting:
                 raise RuntimeError(
-                    "matched_random radial initialization does not reproduce the "
+                    f"matched_random {method} initialization does not reproduce the "
                     f"untrained linear reference: {nesting_error:.3e}"
                 )
             label = f"{label} [matched_random]"
-            print("radial initialization: matched untrained linear rho, identity gate")
+            print(f"{method} initialization: matched untrained linear predictions")
         else:
             label = spec.label
             set_global_seed(args.seed + spec.seed_offset)
@@ -920,13 +1123,20 @@ def run(args: argparse.Namespace) -> None:
             lr_min_ratio=args.lr_min_ratio,
             device=device,
             name=label,
+            checkpoint_selection=args.checkpoint_selection,
         )
         info["method"] = method
         info["label"] = label
-        if method == "radial":
+        if method in {"radial", "stacked"}:
             info["initialization"] = SELECTED_RADIAL_INIT
             if nesting_error is not None:
                 info["nested_initialization_max_abs_diff"] = nesting_error
+        if method == "stacked":
+            info["learned_readout_initialization"] = "nonzero_seeded_linear_default"
+            info["m_parametrization"] = args.m_parametrization
+            info["m_init_std"] = float(args.m_init_std)
+            info["m_pool_scale"] = args.m_pool_scale
+            info["ilsa_nesting"] = "approximate" if args.m_init_std > 0 else "exact"
         training_info[method] = info
         torch.save(
             {
@@ -940,6 +1150,9 @@ def run(args: argparse.Namespace) -> None:
             out_dir / f"model_{method}.pt",
         )
         all_trace.extend(trace)
+        # Preserve finished methods and traces even if a later method fails.
+        write_csv(out_dir / "training_trace.csv", all_trace)
+        (out_dir / "training_info.json").write_text(json.dumps(training_info, indent=2), encoding="utf-8")
     write_csv(out_dir / "training_trace.csv", all_trace)
     (out_dir / "training_info.json").write_text(json.dumps(training_info, indent=2), encoding="utf-8")
 
@@ -968,6 +1181,20 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--hidden", type=int, default=64)
     parser.add_argument("--depth", type=int, default=2)
     parser.add_argument("--gate-hidden", type=int, default=16)
+    parser.add_argument("--m-dim", type=int, default=1)
+    parser.add_argument("--include-constant-channel", type=int, choices=(0, 1), default=1)
+    parser.add_argument("--m-parametrization", choices=M_PARAMETRIZATIONS, default="free",
+                        help="'free' is m=MLP(s,a); 'score_scaled' is m=s*MLP(s,a), which "
+                             "keeps exact ILSA nesting but restores s-dependent gradients.")
+    parser.add_argument("--m-init-std", type=float, default=0.0,
+                        help="Output-layer init SD for the learned channel. Above zero this "
+                             "gives up exact ILSA nesting; the deviation is reported.")
+    parser.add_argument("--m-pool-scale", choices=M_POOL_SCALES, default="none",
+                        help="Divisor for the pooled learned channel; 'block_sd' reuses "
+                             "the identity channel's standardizing constant.")
+    parser.add_argument("--checkpoint-selection", choices=("raw_or_ema", "raw"),
+                        default="raw_or_ema",
+                        help="Legacy raw/EMA selection, or explicitly validation-best raw.")
     parser.add_argument("--iters", type=int, default=20_000)
     parser.add_argument("--batch-size", type=int, default=512)
     parser.add_argument("--lr", type=float, default=1e-4, help="Linear-model learning rate.")

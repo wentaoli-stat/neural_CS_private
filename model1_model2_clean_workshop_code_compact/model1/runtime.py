@@ -96,7 +96,11 @@ class AmortizedScoreRuntime:
             if key in checkpoint_config and checkpoint_config[key] != self.config.get(key):
                 raise ValueError(f"Checkpoint/config mismatch for {key}")
 
-        if self.method == "radial" and not bool(self.config.get("gate_condition_on_anchor", 0)):
+        if self.method == "stacked":
+            for key in ("m_dim", "include_constant_channel", "gate_hidden", "gate_condition_on_anchor"):
+                if checkpoint_config.get(key) != self.config.get(key):
+                    raise ValueError(f"Checkpoint/config mismatch for {key}")
+        if self.method in {"radial", "stacked"} and not bool(self.config.get("gate_condition_on_anchor", 0)):
             raise ValueError("Formal Mode A radial runtime requires an anchor-conditioned gate")
         model: torch.nn.Module = stage1.build_model(self.method, self.config, self.stats)
         model.load_state_dict(payload["state_dict"], strict=True)
@@ -187,10 +191,11 @@ class AmortizedScoreRuntime:
         s_z = ((s - self._s_mean) / self._s_sd).to(torch.float32)
         anchor_z = ((u_tensor - self.anchor_mean) / self.anchor_sd).to(torch.float32)
 
-        if self.method == "linear":
+        if self.method in {"linear", "stacked"}:
             block_raw = s_z.mean(dim=2, keepdim=True)
             block = (block_raw - self._block_mean) / self._block_sd
-            score = self.model(block, anchor_z)
+            score = (self.model(block, s_z, anchor_z) if self.method == "stacked"
+                     else self.model(block, anchor_z))
         else:
             score = self.model(s_z, anchor_z)
         return score, u_tensor

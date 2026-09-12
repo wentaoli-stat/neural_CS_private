@@ -14,7 +14,9 @@ ROOT = Path(__file__).resolve().parents[1]
 def ignored_generated_file(path: Path) -> bool:
     relative = path.relative_to(ROOT)
     return (
-        "__pycache__" in relative.parts
+        relative.parts[0] == "runs"
+        or path.name == ".DS_Store"
+        or "__pycache__" in relative.parts
         or ".pytest_cache" in relative.parts
         or "sbi-logs" in relative.parts
         or path.suffix in {".pyc", ".pyo", ".log"}

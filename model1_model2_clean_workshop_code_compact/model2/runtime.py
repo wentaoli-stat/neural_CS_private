@@ -34,7 +34,7 @@ def resolve_device(device: str) -> str:
 
 def parse_method_list(text: str) -> list[str]:
     methods = [part.strip() for part in str(text).split(",") if part.strip()]
-    bad = sorted(set(methods) - {"linear", "shared_radial"})
+    bad = sorted(set(methods) - ({"linear"} | stage1.NONLINEAR_METHODS))
     if bad:
         raise ValueError(f"Unknown methods: {bad}")
     if not methods:
@@ -56,8 +56,8 @@ class AmortizedScoreRuntime:
     ):
         self.run_dir = Path(run_dir)
         self.method = str(method)
-        if self.method not in {"linear", "shared_radial"}:
-            raise ValueError("method must be 'linear' or 'shared_radial'")
+        if self.method not in ({"linear"} | stage1.NONLINEAR_METHODS):
+            raise ValueError(f"unknown method: {self.method!r}")
         self.device = resolve_device(device)
 
         config_path = self.run_dir / "config.json"
@@ -142,6 +142,19 @@ class AmortizedScoreRuntime:
             model: torch.nn.Module = stage1.LinearCSBetaDeepSets(
                 int(self.config["hidden"]),
                 int(self.config["depth"]),
+            )
+        elif self.method in stage1.STACKED_METHODS:
+            model = stage1.StackedCSBetaDeepSets(
+                int(self.config["hidden"]),
+                int(self.config["depth"]),
+                int(self.config["gate_hidden"]),
+                s1_mean=self.stats["s1_mean"],
+                s1_sd=self.stats["s1_sd"],
+                s2_mean=self.stats["s2_mean"],
+                s2_sd=self.stats["s2_sd"],
+                m_dim=int(self.config.get("m_dim", 1)),
+                include_constant_channel=bool(self.config.get("include_constant_channel", 1)),
+                share_local_features=self.method == "stacked_shared",
             )
         else:
             if not bool(self.config.get("gate_condition_on_anchor", 0)):
@@ -309,10 +322,11 @@ class AmortizedScoreRuntime:
         s2_z = ((s2 - self._s2_mean) / self._s2_sd).to(torch.float32)
         anchor_z = ((u_tensor - self.anchor_mean) / self.anchor_sd).to(torch.float32)
 
-        if self.method == "linear":
+        if self.method in ({"linear"} | stage1.STACKED_METHODS):
             block_raw = torch.stack([s1_z.mean(dim=2), s2_z.mean(dim=2)], dim=-1)
             block = (block_raw - self._block_mean) / self._block_sd
-            score = self.model(block, anchor_z)
+            score = (self.model(block, anchor_z) if self.method == "linear"
+                     else self.model(block, s1_z, s2_z, anchor_z))
         else:
             score = self.model(s1_z, s2_z, anchor_z)
         return score, u_tensor

@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-09-12 Model 1 stacked Stage-1 comparison
+
+- Add the optional stacked local map with zero initial features and nonzero
+  learned-feature readout columns, matched initialization, frozen runtime replay,
+  feature-scale diagnostics, and a three-method Stage-1 launcher. Preserve
+  existing architecture defaults and packaged checkpoints. See
+  [STACKED_NLSA_RESULTS.md](STACKED_NLSA_RESULTS.md) for the single-seed comparison.
+- Add an explicit raw-only checkpoint-selection option; the legacy default
+  remains raw-or-EMA. The new launcher uses raw-only as specified in the prompt.
+- Exclude generated `runs/` outputs and Finder `.DS_Store` metadata from package
+  verification. Refresh the delivery manifest for source changes, including the
+  already-existing methodology math-formatting change; artifact hashes remain
+  unchanged.
+
 ## 2026-08-22 interface cleanup
 
 - 统一将论文和 README 中的非线性方法展示为 `Nonlinear gate`，同时保留旧

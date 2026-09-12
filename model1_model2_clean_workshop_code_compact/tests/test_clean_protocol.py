@@ -16,10 +16,12 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_public_method_surface_is_current_only() -> None:
-    assert set(model1_stage1.ARCHITECTURES) == {"linear", "radial"}
+    assert set(model1_stage1.ARCHITECTURES) == {"linear", "radial", "stacked"}
     assert set(model1_stage2.METHOD_LABELS) == {"pilot", "linear", "radial"}
     assert {"linear"} | model2_stage1.GATED_METHODS == {"linear", "shared_radial"}
-    assert set(model2_stage2.METHOD_LABELS) == {"pilot", "linear", "shared_radial"}
+    assert model2_stage1.STACKED_METHODS == {"stacked_shared", "stacked_split"}
+    assert set(model2_stage2.METHOD_LABELS) == {
+        "pilot", "linear", "shared_radial", "stacked_shared", "stacked_split"}
 
 
 def test_formal_defaults() -> None:

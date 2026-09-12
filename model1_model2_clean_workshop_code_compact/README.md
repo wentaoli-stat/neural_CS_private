@@ -183,6 +183,27 @@ The exact numerical tables, including per-parameter Stage-1 MSE, posterior-mean
 MSE, W1 and posterior-SD error, are in
 [`METHOD_AND_RESULTS.md`](METHOD_AND_RESULTS.md).
 
+## Additional Model 1 Stage-1 stacked comparison
+
+The optional `stacked` architecture uses mean-pooled `(1, s, m(s, anchor))`
+features. Its learned feature starts at zero and its learned-feature readout
+weights start nonzero, preserving ILSA initialization without blocking gradients.
+The existing `linear,radial` defaults and packaged checkpoints are unchanged.
+
+```bash
+OMP_NUM_THREADS=8 DEVICE=cpu SEED=20260709 \
+PYTHON_BIN=../.venv-stacked-nlsa/bin/python \
+bash scripts/run_model1_stage1_stacked.sh runs/NEW_UNUSED_DIRECTORY
+../.venv-stacked-nlsa/bin/python scripts/summarize_model1_stacked.py \
+  --run-dir runs/NEW_UNUSED_DIRECTORY
+```
+
+This launcher explicitly selects validation-best **raw** weights for all three
+methods; the original trainer's default still compares raw and EMA validation
+losses. Results for the one-seed, Stage-1-only comparison are in
+[`STACKED_NLSA_RESULTS.md`](STACKED_NLSA_RESULTS.md). Model 2 and Stage 2 have not
+been extended to the stacked method in this scoped change.
+
 ## Max-stable
 
 The selected Max-stable implementation is a separate package:
