@@ -171,11 +171,26 @@ def sample_anchor_batch(
     return sample_from_anchor_pi(rng, anchor_pi, sigma_q, n_blocks, block_size, tau)
 
 
+# Datasets per featurization chunk. Pairwise float64 scores for 40k x 40 x 780
+# take ~10 GB per temporary array, so full-bank featurization exceeds host memory
+# on smaller machines. Chunking along the dataset axis leaves every feature value
+# unchanged; see make_feature_stats for the standardization constants.
+FEATURE_CHUNK_ROWS = 2_000
+
+
+def _rows_of_pi(feature_pi: np.ndarray | float, start: int, stop: int) -> np.ndarray | float:
+    pi_arr = np.asarray(feature_pi, dtype=np.float64)
+    return feature_pi if pi_arr.ndim == 0 else pi_arr[start:stop]
+
+
 def make_feature_stats(
     y: np.ndarray,
     tau: float,
     feature_pi: np.ndarray | float,
+    chunk_rows: int = FEATURE_CHUNK_ROWS,
 ) -> dict[str, np.ndarray]:
+    if y.shape[0] > int(chunk_rows):
+        return _make_feature_stats_chunked(y, tau, feature_pi, int(chunk_rows))
     s1 = score_u_from_log_ratio(marginal_log_ratio(y, tau), feature_pi)
     s2 = score_u_from_log_ratio(pairwise_log_ratio(y, tau), feature_pi)
     stats = {
@@ -195,12 +210,76 @@ def make_feature_stats(
     return stats
 
 
+def _make_feature_stats_chunked(
+    y: np.ndarray,
+    tau: float,
+    feature_pi: np.ndarray | float,
+    chunk_rows: int,
+) -> dict[str, np.ndarray]:
+    """Same population means/SDs as the one-shot path, from float64 running sums.
+
+    Agrees with the one-shot numpy mean/std up to floating-point rounding
+    (relative ~1e-15); it never holds pairwise float64 scores for all rows.
+    """
+    n = y.shape[0]
+    count = {"s1": 0, "s2": 0}
+    total = {"s1": 0.0, "s2": 0.0}
+    square = {"s1": 0.0, "s2": 0.0}
+    for start in range(0, n, chunk_rows):
+        stop = min(start + chunk_rows, n)
+        pi = _rows_of_pi(feature_pi, start, stop)
+        for key, log_ratio in (("s1", marginal_log_ratio), ("s2", pairwise_log_ratio)):
+            s = score_u_from_log_ratio(log_ratio(y[start:stop], tau), pi)
+            count[key] += s.size
+            total[key] += float(s.sum())
+            square[key] += float(np.square(s).sum())
+    stats: dict[str, np.ndarray] = {}
+    for key in ("s1", "s2"):
+        mean = total[key] / count[key]
+        stats[f"{key}_mean"] = np.array(mean, dtype=np.float64)
+        stats[f"{key}_sd"] = np.array(math.sqrt(max(square[key] / count[key] - mean**2, 0.0)), dtype=np.float64)
+    for key in ("s1_sd", "s2_sd"):
+        stats[key] = np.where(stats[key] < 1e-8, 1.0, stats[key])
+
+    block_count = 0
+    block_total = np.zeros(2, dtype=np.float64)
+    block_square = np.zeros(2, dtype=np.float64)
+    for start in range(0, n, chunk_rows):
+        stop = min(start + chunk_rows, n)
+        pi = _rows_of_pi(feature_pi, start, stop)
+        s1 = score_u_from_log_ratio(marginal_log_ratio(y[start:stop], tau), pi)
+        s2 = score_u_from_log_ratio(pairwise_log_ratio(y[start:stop], tau), pi)
+        s1_z = (s1 - stats["s1_mean"]) / stats["s1_sd"]
+        s2_z = (s2 - stats["s2_mean"]) / stats["s2_sd"]
+        block_raw = np.stack([s1_z.mean(axis=2), s2_z.mean(axis=2)], axis=-1)
+        block_count += block_raw.shape[0] * block_raw.shape[1]
+        block_total += block_raw.sum(axis=(0, 1))
+        block_square += np.square(block_raw).sum(axis=(0, 1))
+    block_mean = block_total / block_count
+    block_sd = np.sqrt(np.maximum(block_square / block_count - block_mean**2, 0.0))
+    stats["block_mean"] = block_mean.reshape(1, 1, 2)
+    stats["block_sd"] = np.where(block_sd < 1e-8, 1.0, block_sd).reshape(1, 1, 2)
+    return stats
+
+
 def featurize(
     y: np.ndarray,
     tau: float,
     feature_pi: np.ndarray | float,
     stats: dict[str, np.ndarray],
+    chunk_rows: int = FEATURE_CHUNK_ROWS,
 ) -> dict[str, np.ndarray]:
+    if y.shape[0] > int(chunk_rows):
+        # Elementwise per dataset, so chunked outputs are bit-identical.
+        out: dict[str, np.ndarray] = {}
+        for start in range(0, y.shape[0], int(chunk_rows)):
+            stop = min(start + int(chunk_rows), y.shape[0])
+            part = featurize(y[start:stop], tau, _rows_of_pi(feature_pi, start, stop), stats, chunk_rows)
+            if not out:
+                out = {k: np.empty((y.shape[0],) + v.shape[1:], dtype=v.dtype) for k, v in part.items()}
+            for key, value in part.items():
+                out[key][start:stop] = value
+        return out
     s1 = score_u_from_log_ratio(marginal_log_ratio(y, tau), feature_pi)
     s2 = score_u_from_log_ratio(pairwise_log_ratio(y, tau), feature_pi)
     s1_z = ((s1 - stats["s1_mean"]) / stats["s1_sd"]).astype(np.float32)

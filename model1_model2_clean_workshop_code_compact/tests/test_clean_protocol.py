@@ -17,7 +17,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_public_method_surface_is_current_only() -> None:
     assert set(model1_stage1.ARCHITECTURES) == {"linear", "radial", "stacked"}
-    assert set(model1_stage2.METHOD_LABELS) == {"pilot", "linear", "radial"}
+    assert set(model1_stage2.METHOD_LABELS) == {"pilot", "linear", "radial", "stacked"}
+    # Seed indices of the original methods are frozen for comparability.
+    assert model1_stage2.METHOD_SEED_INDEX == {"linear": 0, "radial": 1, "pilot": 2, "stacked": 3}
     assert {"linear"} | model2_stage1.GATED_METHODS == {"linear", "shared_radial"}
     assert model2_stage1.STACKED_METHODS == {"stacked_shared", "stacked_split"}
     assert set(model2_stage2.METHOD_LABELS) == {
@@ -136,6 +138,19 @@ def test_stage1_training_does_not_run_exact_evaluation() -> None:
         encoding="utf-8"
     )
     assert "--stage1-run-dirs" not in model1_stage2_launcher
+    stacked_launcher = (ROOT / "scripts/run_model1_stage2_npe_stacked.sh").read_text(
+        encoding="utf-8"
+    )
+    assert "--stage1-run-dirs" not in stacked_launcher
+    assert "model_stacked.pt" in stacked_launcher
+    assert "--methods pilot,linear,radial,stacked" in stacked_launcher
+    # Apart from the stacked requirement and method list, the protocol is identical.
+    strip = lambda text: [
+        line for line in text.splitlines()
+        if "model_stacked.pt" not in line and "--methods" not in line
+        and "model_radial.pt" not in line
+    ]
+    assert strip(stacked_launcher) == strip(model1_stage2_launcher)
 
     launcher = (ROOT / "scripts/run_model2_stage2_validation_best_npe.sh").read_text(
         encoding="utf-8"

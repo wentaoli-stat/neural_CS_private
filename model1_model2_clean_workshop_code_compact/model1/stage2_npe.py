@@ -34,13 +34,20 @@ METHOD_LABELS = {
     "pilot": "pilot-only NPE",
     "linear": "linear FSM pilot+score NPE",
     "radial": "radial FSM pilot+score NPE",
+    "stacked": "stacked FSM pilot+score NPE",
 }
 
 METHOD_SEED_INDEX = {
     "linear": 0,
     "radial": 1,
     "pilot": 2,
+    "stacked": 3,
 }
+
+# Paired W1 references, most expressive first. Each reference is compared with
+# every present method that is not itself a higher-ranked reference, so without
+# stacked this reduces to the original radial-versus-all comparison.
+PAIRED_REFERENCE_ORDER = ("stacked", "radial")
 
 SELECTED_PILOT_MODE = "marginal"
 SELECTED_PILOT_BACKEND = "torch"
@@ -284,53 +291,66 @@ def summarize_pooled(rows: list[dict[str, object]]) -> list[dict[str, object]]:
     return out
 
 
+def _paired_w1_row(
+    values: dict[tuple[float, int, str], float],
+    reference: str,
+    competitor: str,
+) -> dict[str, object]:
+    paired = [
+        (reference_value, values[(pi, seed, competitor)])
+        for (pi, seed, method), reference_value in values.items()
+        if method == reference and (pi, seed, competitor) in values
+    ]
+    reference_values = np.asarray([item[0] for item in paired], dtype=np.float64)
+    competitor_values = np.asarray([item[1] for item in paired], dtype=np.float64)
+    difference = reference_values - competitor_values
+    t_stat = float("nan")
+    p_value = float("nan")
+    if difference.size > 1 and difference.std(ddof=1) > 0:
+        t_stat = float(difference.mean() / (difference.std(ddof=1) / math.sqrt(difference.size)))
+        try:
+            from scipy.stats import t as student_t
+
+            p_value = float(2.0 * student_t.sf(abs(t_stat), df=difference.size - 1))
+        except ImportError:
+            pass
+    return {
+        "reference": reference,
+        "competitor": competitor,
+        "n_pairs": int(difference.size),
+        "reference_mean_w1": float(reference_values.mean()),
+        "competitor_mean_w1": float(competitor_values.mean()),
+        "reference_improvement_percent": float(
+            100.0 * (competitor_values.mean() - reference_values.mean())
+            / competitor_values.mean()
+        ),
+        "mean_paired_difference": float(difference.mean()),
+        "paired_t": t_stat,
+        "paired_p": p_value,
+        "reference_wins": int(np.sum(difference < 0.0)),
+    }
+
+
 def paired_w1_comparisons(rows: list[dict[str, object]]) -> list[dict[str, object]]:
+    """Paired W1 differences (reference - competitor) over shared (pi, seed) cells.
+
+    Reports radial-vs-others first (unchanged when stacked is absent), then
+    stacked-vs-others, which includes stacked-radial and stacked-linear.
+    """
     values = {
         (float(row["pi_true"]), int(row["seed"]), str(row["method"])): float(row["w1_to_exact"])
         for row in rows
         if str(row["method"]) != "exact likelihood grid"
     }
-    radial = METHOD_LABELS["radial"]
+    present = {method for _, _, method in values}
     out = []
-    if radial not in {method for _, _, method in values}:
-        return out
-    competitors = sorted({method for _, _, method in values} - {radial})
-    for competitor in competitors:
-        paired = [
-            (radial_value, values[(pi, seed, competitor)])
-            for (pi, seed, method), radial_value in values.items()
-            if method == radial and (pi, seed, competitor) in values
-        ]
-        radial_values = np.asarray([item[0] for item in paired], dtype=np.float64)
-        competitor_values = np.asarray([item[1] for item in paired], dtype=np.float64)
-        difference = radial_values - competitor_values
-        t_stat = float("nan")
-        p_value = float("nan")
-        if difference.size > 1 and difference.std(ddof=1) > 0:
-            t_stat = float(difference.mean() / (difference.std(ddof=1) / math.sqrt(difference.size)))
-            try:
-                from scipy.stats import t as student_t
-
-                p_value = float(2.0 * student_t.sf(abs(t_stat), df=difference.size - 1))
-            except ImportError:
-                pass
-        out.append(
-            {
-                "reference": radial,
-                "competitor": competitor,
-                "n_pairs": int(difference.size),
-                "reference_mean_w1": float(radial_values.mean()),
-                "competitor_mean_w1": float(competitor_values.mean()),
-                "reference_improvement_percent": float(
-                    100.0 * (competitor_values.mean() - radial_values.mean())
-                    / competitor_values.mean()
-                ),
-                "mean_paired_difference": float(difference.mean()),
-                "paired_t": t_stat,
-                "paired_p": p_value,
-                "reference_wins": int(np.sum(difference < 0.0)),
-            }
-        )
+    for rank, key in reversed(list(enumerate(PAIRED_REFERENCE_ORDER))):
+        reference = METHOD_LABELS[key]
+        if reference not in present:
+            continue
+        higher = {METHOD_LABELS[other] for other in PAIRED_REFERENCE_ORDER[:rank]}
+        for competitor in sorted(present - higher - {reference}):
+            out.append(_paired_w1_row(values, reference, competitor))
     return out
 
 
