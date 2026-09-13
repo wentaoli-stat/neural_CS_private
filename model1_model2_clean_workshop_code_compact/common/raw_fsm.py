@@ -42,7 +42,10 @@ CONTEXT_DEFINITION = "(u_pilot(Y), S_raw_block_FSM(Y, u_pilot(Y)))"
 DIRECT_METHOD = "direct_raw_fsm"
 DIRECT_METHOD_LABEL = "direct amortized raw-FSM pilot+score NPE"
 DIRECT_CONTEXT_DEFINITION = "(u_pilot(Y), S_direct_raw_FSM(Y, u_pilot(Y)))"
-ARCHITECTURES = ("block_deepsets", "direct_flat_mlp")
+SUBSCORE_METHOD = "subscore_fsm"
+SUBSCORE_METHOD_LABEL = "all-subscores flat MLP FSM pilot+score NPE"
+SUBSCORE_CONTEXT_DEFINITION = "(u_pilot(Y), S_subscore_FSM(Y, u_pilot(Y)))"
+ARCHITECTURES = ("block_deepsets", "direct_flat_mlp", "subscore_flat_mlp")
 DEFAULTS: dict[str, dict[str, Any]] = {
     "model1": {
         "n_blocks": 20,
@@ -197,11 +200,62 @@ class DirectRawMLP(nn.Module):
         return self.net(network_input).squeeze(-1)
 
 
+class SubscoreFlatMLP(nn.Module):
+    """Amortized FSM score from every local marginal score, flattened.
+
+    The local scores ``s_kj(Y, u) = expit(u + l_kj) - expit(u)``, with ``l_kj``
+    the per-observation mean-shift log-likelihood ratio, are recomputed from Y
+    at the anchor inside ``forward``, so the runtime still needs only
+    ``(Y, anchor)``. There is no pooling or permutation structure: this is the
+    local-score summary with the aggregation removed. With the same hidden
+    width it has exactly as many parameters as ``DirectRawMLP``, so the two
+    unstructured Fisher-score baselines differ only in their input. Model 1 only.
+    """
+
+    def __init__(
+        self,
+        *,
+        n_blocks: int,
+        block_size: int,
+        hidden: int,
+        depth: int,
+        tau: float,
+        anchor_mean: float,
+        anchor_sd: float,
+        s_mean: float,
+        s_sd: float,
+    ) -> None:
+        super().__init__()
+        self.n_blocks = int(n_blocks)
+        self.block_size = int(block_size)
+        self.tau = float(tau)
+        self.net = make_mlp(self.n_blocks * self.block_size + 1, int(hidden), int(depth), 1)
+        for key, value in (("anchor_mean", anchor_mean), ("anchor_sd", anchor_sd),
+                           ("s_mean", s_mean), ("s_sd", s_sd)):
+            self.register_buffer(key, torch.tensor(float(value), dtype=torch.float32))
+
+    def local_scores(self, y: torch.Tensor, anchor_z: torch.Tensor) -> torch.Tensor:
+        u = (anchor_z * self.anchor_sd + self.anchor_mean).reshape(-1, 1, 1)
+        log_ratio = self.tau * y - 0.5 * self.tau**2
+        return torch.sigmoid(u + log_ratio) - torch.sigmoid(u)
+
+    def forward(self, y: torch.Tensor, anchor_z: torch.Tensor) -> torch.Tensor:
+        if y.ndim != 3 or y.shape[1:] != (self.n_blocks, self.block_size):
+            raise ValueError(
+                f"expected y shape (batch,{self.n_blocks},{self.block_size}), "
+                f"got {tuple(y.shape)}"
+            )
+        s_z = ((self.local_scores(y, anchor_z) - self.s_mean) / self.s_sd).flatten(start_dim=1)
+        return self.net(torch.cat((s_z, anchor_z.reshape(-1, 1)), dim=1)).squeeze(-1)
+
+
 def architecture_contract(architecture: str) -> tuple[str, str, str]:
     if architecture == "block_deepsets":
         return METHOD, METHOD_LABEL, CONTEXT_DEFINITION
     if architecture == "direct_flat_mlp":
         return DIRECT_METHOD, DIRECT_METHOD_LABEL, DIRECT_CONTEXT_DEFINITION
+    if architecture == "subscore_flat_mlp":
+        return SUBSCORE_METHOD, SUBSCORE_METHOD_LABEL, SUBSCORE_CONTEXT_DEFINITION
     raise ValueError(f"unknown raw-FSM architecture: {architecture}")
 
 
@@ -215,6 +269,7 @@ def build_score_model(
     depth: int,
     y_mean: float,
     y_sd: float,
+    subscore_stats: dict[str, float] | None = None,
 ) -> nn.Module:
     if architecture == "block_deepsets":
         return RawBlockDeepSets(
@@ -225,6 +280,13 @@ def build_score_model(
         return DirectRawMLP(
             n_blocks=n_blocks, block_size=block_size, hidden=hidden, depth=depth,
             y_mean=y_mean, y_sd=y_sd,
+        )
+    if architecture == "subscore_flat_mlp":
+        if subscore_stats is None:
+            raise ValueError("subscore_flat_mlp needs tau, anchor and local-score statistics")
+        return SubscoreFlatMLP(
+            n_blocks=n_blocks, block_size=block_size, hidden=hidden, depth=depth,
+            **subscore_stats,
         )
     raise ValueError(f"unknown raw-FSM architecture: {architecture}")
 
@@ -325,32 +387,49 @@ def train_stage1(args: argparse.Namespace) -> None:
     anchor_sd = max(float(np.std(train["anchor_u"])), 1e-8)
     train_anchor_z = ((train["anchor_u"] - anchor_mean) / anchor_sd).astype(np.float32)
     val_anchor_z = ((val["anchor_u"] - anchor_mean) / anchor_sd).astype(np.float32)
+    subscore_stats = None
+    if architecture == "subscore_flat_mlp":
+        if str(args.model) != "model1":
+            raise ValueError("subscore_flat_mlp is implemented for model1 only")
+        local = module.score_u_from_log_ratio(
+            module.marginal_log_ratio(train["y"], float(args.tau)),
+            module.sigmoid_np(train["anchor_u"]),
+        )
+        subscore_stats = {
+            "tau": float(args.tau), "anchor_mean": anchor_mean, "anchor_sd": anchor_sd,
+            "s_mean": float(np.mean(local)), "s_sd": max(float(np.std(local)), 1e-8),
+        }
+        del local
 
     set_seed(int(args.seed) + 33)
     model = build_score_model(
         architecture,
         n_blocks=int(args.n_blocks), block_size=int(args.block_size),
         phi_hidden=int(args.phi_hidden), hidden=int(args.hidden), depth=int(args.depth),
-        y_mean=y_mean, y_sd=y_sd,
+        y_mean=y_mean, y_sd=y_sd, subscore_stats=subscore_stats,
     ).to(device)
     trainable_parameters = int(sum(value.numel() for value in model.parameters()))
     config = {
         **vars(args),
         "output_dir": str(output),
         "method": method,
-        "label": (
-            "raw-observation block DeepSets anchored Direct-FSM"
-            if architecture == "block_deepsets"
-            else "direct amortized raw-observation MLP FSM"
-        ),
+        "label": {
+            "block_deepsets": "raw-observation block DeepSets anchored Direct-FSM",
+            "direct_flat_mlp": "direct amortized raw-observation MLP FSM",
+            "subscore_flat_mlp": "all-local-subscores flat MLP FSM",
+        }[architecture],
         "method_label": method_label,
         "context_definition": context_definition,
-        "input_representation": "literal raw Y; train-only scalar affine standardization",
-        "score_network_input": (
-            "shared coordinate embeddings followed by blockwise pooling"
-            if architecture == "block_deepsets"
-            else "concatenate(flatten(Y), standardized_anchor_u)"
+        "input_representation": (
+            "local marginal scores s_kj(Y, anchor) recomputed from Y; train-only scalar standardization"
+            if architecture == "subscore_flat_mlp"
+            else "literal raw Y; train-only scalar affine standardization"
         ),
+        "score_network_input": {
+            "block_deepsets": "shared coordinate embeddings followed by blockwise pooling",
+            "direct_flat_mlp": "concatenate(flatten(Y), standardized_anchor_u)",
+            "subscore_flat_mlp": "concatenate(flatten(s_kj(Y, anchor)), standardized_anchor_u)",
+        }[architecture],
         "uses_phi": architecture == "block_deepsets",
         "uses_gate": False,
         "uses_pooling": architecture == "block_deepsets",
@@ -368,6 +447,8 @@ def train_stage1(args: argparse.Namespace) -> None:
         output / "feature_stats.npz",
         y_mean=np.asarray(y_mean), y_sd=np.asarray(y_sd),
         anchor_u_mean=np.asarray(anchor_mean), anchor_u_sd=np.asarray(anchor_sd),
+        **({"s_mean": np.asarray(subscore_stats["s_mean"]),
+            "s_sd": np.asarray(subscore_stats["s_sd"])} if subscore_stats else {}),
     )
 
     optimizer = torch.optim.AdamW(
@@ -417,7 +498,9 @@ def train_stage1(args: argparse.Namespace) -> None:
             ema_val = evaluate_mse(model, y_val, a_val, t_val, int(args.eval_batch_size))
             model.load_state_dict(raw_state)
             selected_val, selected_source = (
-                (ema_val, "ema") if ema_val < raw_val else (raw_val, "raw")
+                (ema_val, "ema")
+                if str(args.checkpoint_selection) == "raw_or_ema" and ema_val < raw_val
+                else (raw_val, "raw")
             )
             if selected_val < best_val - 1e-6:
                 best_val, best_step, best_source = selected_val, step, selected_source
@@ -447,7 +530,8 @@ def train_stage1(args: argparse.Namespace) -> None:
     }
     payload_common = {
         "method": method, "label": config["label"], "config": config,
-        "training_info": info, "input_mode": "raw_observation",
+        "training_info": info,
+        "input_mode": "local_subscores" if architecture == "subscore_flat_mlp" else "raw_observation",
     }
     torch.save({**payload_common, "state_dict": best, "selection": "validation_best",
                 "checkpoint_source": best_source, "checkpoint_step": best_step},
@@ -515,6 +599,11 @@ class RawFSMRuntime:
             phi_hidden=int(self.config.get("phi_hidden", 32)),
             hidden=int(self.config["hidden"]), depth=int(self.config["depth"]),
             y_mean=float(stats["y_mean"]), y_sd=float(stats["y_sd"]),
+            subscore_stats=(
+                {"tau": self.tau, "anchor_mean": self.anchor_mean, "anchor_sd": self.anchor_sd,
+                 "s_mean": float(stats["s_mean"]), "s_sd": float(stats["s_sd"])}
+                if self.architecture == "subscore_flat_mlp" else None
+            ),
         )
         self.checkpoint = checkpoint or self.run_dir / f"model_{self.method}.pt"
         payload = torch.load(self.checkpoint, map_location="cpu", weights_only=False)
@@ -600,6 +689,8 @@ def pilot_args(args: argparse.Namespace) -> argparse.Namespace:
         pilot_progress_every=int(args.pilot_progress_every),
         pilot_device=resolve(str(args.pilot_device)), pilot_backend=str(args.pilot_backend),
         pilot_mode=str(args.pilot_mode),
+        # model1.stage2_npe.data_only_pilot reads the device as ``args.device``.
+        device=resolve(str(args.pilot_device)),
     )
 
 
@@ -656,6 +747,41 @@ def compute_pilot(y: np.ndarray, runtime: RawFSMRuntime, args: argparse.Namespac
     return np.concatenate(roots), np.asarray(status, dtype="U32")
 
 
+def load_or_compute_training_pilot(
+    y: np.ndarray,
+    pi_train: np.ndarray,
+    runtime: RawFSMRuntime,
+    args: argparse.Namespace,
+):
+    """Reuse a Model-1 Stage-2 pilot cache when it matches this training bank.
+
+    The pilot is data-only, so one cache serves every Stage-1 checkpoint
+    trained on the same NPE simulation bank.
+    """
+    cache = getattr(args, "pilot_cache", None)
+    if cache is None or not Path(cache).exists():
+        return compute_pilot(y, runtime, args)
+    if runtime.model_name != "model1":
+        raise ValueError("--pilot-cache is supported for model1 only")
+    with np.load(cache) as stored:
+        cache_pi = np.asarray(stored["pi_train"], dtype=np.float64)
+        if cache_pi.shape != pi_train.shape or not np.allclose(
+            cache_pi, pi_train, rtol=0.0, atol=2e-7
+        ):
+            raise ValueError(f"pilot cache pi_train does not match this training bank: {cache}")
+        if "pilot_grid_size" in stored.files and int(stored["pilot_grid_size"]) != int(
+            args.pilot_grid_size
+        ):
+            raise ValueError("pilot cache grid size does not match --pilot-grid-size")
+        if "tau" in stored.files and not np.isclose(float(stored["tau"]), runtime.tau):
+            raise ValueError("pilot cache tau does not match the Stage-1 model")
+        if "pilot_mode" in stored.files and str(stored["pilot_mode"]) != "marginal":
+            raise ValueError("pilot cache was not generated by the marginal pilot")
+        print(f"Loaded pilot cache: {cache}", flush=True)
+        return (np.asarray(stored["pilot_u"], dtype=np.float64),
+                np.asarray(stored["pilot_status"], dtype="U32"))
+
+
 def train_stage2(args: argparse.Namespace) -> None:
     model_defaults(args)
     output = Path(args.output_dir)
@@ -673,7 +799,7 @@ def train_stage2(args: argparse.Namespace) -> None:
     rng = np.random.default_rng(int(args.sbi_train_seed))
     pi_train = rng.uniform(float(args.pi_prior_min), float(args.pi_prior_max), int(args.n_sbi_train))
     y_train = raw_data_npe.simulate(rng, pi_train, args)
-    pilot_u, pilot_status = compute_pilot(y_train, runtime, args)
+    pilot_u, pilot_status = load_or_compute_training_pilot(y_train, pi_train, runtime, args)
     score = runtime.score(y_train, pilot_u, batch_size=int(args.score_batch_size))
     context = np.column_stack((pilot_u, score)).astype(np.float32)
     if not np.all(np.isfinite(context)):
@@ -804,6 +930,10 @@ def parser() -> argparse.ArgumentParser:
     one.add_argument("--ema-decay", type=float, default=0.995)
     one.add_argument("--print-every", type=int, default=100)
     one.add_argument(
+        "--checkpoint-selection", choices=("raw_or_ema", "raw"), default="raw_or_ema",
+        help="raw_or_ema keeps the archived rule; raw matches the NLSA launchers.",
+    )
+    one.add_argument(
         "--diagnostic-pi-values",
         help="Frozen exact-score diagnostics only; ignored with --skip-exact-diagnostics.",
     )
@@ -870,6 +1000,10 @@ def parser() -> argparse.ArgumentParser:
         help="Model 2 pilot-grid backend; Model 1 uses its torch marginal helper.",
     )
     two.add_argument("--sanity-seed", type=int, default=20260710)
+    two.add_argument(
+        "--pilot-cache", type=Path, default=None,
+        help="Model 1 only: reuse a Stage-2 marginal-pilot cache for the same training bank.",
+    )
     two.add_argument("--device", default="auto")
     two.add_argument("--data-device", default="cpu")
     two.add_argument(
