@@ -272,6 +272,31 @@ def f2_tables() -> str:
         table(["method", "n seeds", "selected σ_q", "W1 at selected", "W1-best σ_q", "best W1", "W1 at 0.20",
                "selected vs 0.20", "per-seed agreement", "rank corr (NLL, W1)"],
               selection_rows, "---|---:|---:|---:|---:|---:|---:|---:|---:|---:"),
+        "",
+    ]
+    paired_rows = []
+    for method in P1_METHODS[1:]:
+        for sigma in SIGMA_GRID[1:]:
+            w1_units, nll_diffs = [], []
+            for s in SEEDS:
+                wide, narrow = p1_cells(p1_stage2_dir(sigma, s)), p1_cells(p1_stage2_dir("0.20", s))
+                if wide and narrow:
+                    w1_units.append((wide[method], narrow[method]))
+                if (sigma, s, method) in nll and ("0.20", s, method) in nll:
+                    nll_diffs.append(nll[(sigma, s, method)] - nll[("0.20", s, method)])
+            w1 = unit_contrast(w1_units)
+            if w1 is None or not nll_diffs:
+                continue
+            paired_rows.append([NAMES[method], sigma, str(w1["n"]), signed(w1["mean"]), fmt(w1["se"]),
+                                f"{w1['wins']}/{w1['n']}", f"{w1['rel']:+.1f}%",
+                                signed(float(np.mean(nll_diffs)), 5), fmt(se(nll_diffs), 5),
+                                f"{sum(x < 0 for x in nll_diffs)}/{len(nll_diffs)}"])
+    parts += [
+        "### F2c. Each bandwidth against σ_q=0.20, paired by Stage-1 seed (negative favours the wider tube)",
+        "The NLL difference is a log-density difference on the same 20k held-out bank; exp(−ΔNLL) is the density ratio.",
+        "",
+        table(["method", "σ_q", "n seeds", "ΔW1", "SE", "wider better", "ΔW1 / W1(0.20)", "ΔNLL", "SE", "wider better (NLL)"],
+              paired_rows, "---|---:|---:|---:|---:|---:|---:|---:|---:|---:"),
     ]
     return NL.join(parts)
 
@@ -285,6 +310,7 @@ def f3_tables() -> str:
     specs += [(f"{NAMES[m]}: σ_q=1.052 − σ_q=0.20", ("1.052", m), ("0.20", m)) for m in P1_METHODS[1:]]
     for label, (sig_a, m_a), (sig_b, m_b) in specs:
         grid: dict[tuple[int, int], float] = {}
+        base: list[float] = []
         cell_diffs = []
         for s in SEEDS:
             for r in reps:
@@ -294,6 +320,7 @@ def f3_tables() -> str:
                 common = sorted(set(ca[m_a]) & set(cb[m_b]))
                 d = [float(ca[m_a][k]["w1_to_exact"]) - float(cb[m_b][k]["w1_to_exact"]) for k in common]
                 grid[(s, r)] = float(np.mean(d))
+                base.append(float(np.mean([float(cb[m_b][k]["w1_to_exact"]) for k in common])))
                 cell_diffs.extend(d)
         full_seeds = [s for s in SEEDS if all((s, r) in grid for r in reps)]
         if not full_seeds:
@@ -311,18 +338,20 @@ def f3_tables() -> str:
         var_seed = max((ms_seed - ms_res) / R, 0.0)
         var_rep = max((ms_rep - ms_res) / S, 0.0)
         se_two_way = math.sqrt(var_seed / S + var_rep / R + ms_res / (S * R))
-        rows.append([label, f"{S}×{R}", signed(float(grand)), fmt(se(seed_means)), fmt(se(rep_means)),
+        rel = 100.0 * float(grand) / float(np.mean(base))
+        rows.append([label, f"{S}×{R}", signed(float(grand)), f"{rel:+.1f}%", fmt(se(seed_means)), fmt(se(rep_means)),
                      fmt(se_two_way), f"{int(np.sum(mat < 0))}/{mat.size}",
                      ", ".join(signed(float(v)) for v in rep_means), fmt(math.sqrt(var_seed)), fmt(math.sqrt(var_rep)),
                      fmt(math.sqrt(ms_res))])
     return NL.join([
         "### F3. W1 contrasts over Stage-1 seeds × Stage-2 replicates (negative favours A)",
         "Replicate 0 is the original run; replicates 1–2 change the NPE bank, NPE seed, posterior seed and test bank.",
+        "Each unit is one (seed, replicate) pair averaged over its 60 test datasets; Δ / B divides by B's mean W1.",
         "SE (two-way) treats seeds and replicates as random effects; SD columns are the variance-component estimates.",
         "",
-        table(["comparison (A − B)", "seeds × reps", "mean ΔW1", "SE over seeds", "SE over reps", "SE (two-way)",
-               "A better (cells)", "mean Δ by replicate", "SD seed", "SD rep", "SD resid"],
-              rows, "---|---:|---:|---:|---:|---:|---:|---|---:|---:|---:"),
+        table(["comparison (A − B)", "seeds × reps", "mean ΔW1", "Δ / B", "SE over seeds", "SE over reps", "SE (two-way)",
+               "A better (seed×rep units)", "mean Δ by replicate", "SD seed", "SD rep", "SD resid"],
+              rows, "---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:"),
     ])
 
 
@@ -355,6 +384,26 @@ def f4_tables() -> str:
             rows.append([NAMES[method], str(len(vals)), fmt(float(np.mean(vals))), fmt(se(vals))])
     parts += ["### F4a. p=3 Stage-1 standardized exact-score MSE (mean over coordinates and evaluation points)",
               table(["method", "n seeds", "std MSE", "SE"], rows, "---|---:|---:|---:"), ""]
+    p3_s1: dict[str, dict[int, float]] = {}
+    for method in P3_METHODS[1:]:
+        for s in SEEDS:
+            path = RUNS / f"p3_s1_{s}" / "score_summary_by_beta.csv"
+            if path.exists():
+                r = [float(x["std_mse_mean"]) for x in read_csv(path) if x["method"] == method]
+                if r:
+                    p3_s1.setdefault(method, {})[s] = float(np.mean(r))
+    rows = []
+    for a, b in (("stacked", "gate"), ("gate", "linear"), ("stacked", "linear")):
+        common = sorted(set(p3_s1.get(a, {})) & set(p3_s1.get(b, {})))
+        if not common:
+            continue
+        d = [p3_s1[a][s] - p3_s1[b][s] for s in common]
+        rows.append([f"{NAMES[a]} − {NAMES[b]}", str(len(common)), signed(float(np.mean(d))), fmt(se(d)),
+                     f"{sum(x < 0 for x in d)}/{len(d)}",
+                     f"{100.0 * float(np.mean(d)) / float(np.mean([p3_s1[b][s] for s in common])):+.1f}%"])
+    parts += ["#### F4a′. p=3 Stage-1 paired differences (readouts matched at lr 1e-3; negative favours A)",
+              table(["comparison (A − B)", "n seeds", "mean Δ", "SE", "A better", "Δ / B"], rows,
+                    "---|---:|---:|---:|---:|---:"), ""]
     if not seeds:
         return NL.join(parts + ["_no p=3 Stage-2 runs available yet_"])
     loaded = {s: p3_cells(s) for s in seeds}
