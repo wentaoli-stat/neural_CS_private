@@ -204,6 +204,6 @@ def run(run_dir: Path, report_path: Path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--run-dir", type=Path, required=True)
-    parser.add_argument("--report", type=Path, default=ROOT / "STACKED_NLSA_RESULTS.md")
+    parser.add_argument("--report", type=Path, default=ROOT / "new_results" / "STACKED_NLSA_RESULTS.md")
     args = parser.parse_args()
     run(args.run_dir.resolve(), args.report.resolve())

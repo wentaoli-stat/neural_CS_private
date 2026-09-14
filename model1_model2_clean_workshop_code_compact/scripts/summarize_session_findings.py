@@ -19,7 +19,7 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 RUNS = ROOT / "runs"
-OUT = ROOT / "FINDINGS_20260912.md"
+OUT = ROOT / "new_results" / "FINDINGS_20260912.md"
 S5 = [20260709, 20260710, 20260711, 20260712, 20260713]
 S3 = S5[:3]
 COORDS = ("u", "tau", "log_sigma")

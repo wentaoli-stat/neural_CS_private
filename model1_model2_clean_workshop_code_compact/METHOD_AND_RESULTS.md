@@ -749,14 +749,3 @@ paired test datasets per fixed truth. Source artifacts are retained in
 Model 2 的 local mixture score link 是 `s = sigmoid(a + ell) - sigmoid(a)`，严格单调但在 pooling 前会饱和。Nonlinear gate（内部键 `shared_radial`）可以近似 channel-independent inverse link，把 `s` 校准回 local log-ratio `ell`；marginal 与 pairwise pooled log-ratios共同恢复 block 的平方和统计量。Linear 先平均 bounded scores，通常会产生不可逆 collision，因此 outer `rho` 再强也无法恢复被 pooling 丢掉的证据强度。
 
 这解释的是 local-summary bottleneck。有限 `sigma_q` 下的 FSM target还包含跨 block interaction，而当前网络仍强制 block-additive；Nonlinear gate 不能消除这部分 smoothing / function-class mismatch。
-
-## Additional Model 1 stacked-map comparison
-
-The separate [STACKED_NLSA_RESULTS.md](STACKED_NLSA_RESULTS.md) reports the
-Model 1, Stage 1 comparison of Linear, the existing multiplicative gate, and
-stacked `(1, s, m(s, anchor))`, using one seed (`20260709`). It includes
-matched initialization and minibatch checks, raw and standardized exact-score
-MSE, paired test-dataset differences, stability diagnostics, and measured runtime.
-This new comparison explicitly selects validation-best raw checkpoints for all
-three methods. It does not replace the packaged gate results above, and includes
-neither Model 2 nor posterior inference.

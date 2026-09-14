@@ -6,7 +6,7 @@
   learned-feature readout columns, matched initialization, frozen runtime replay,
   feature-scale diagnostics, and a three-method Stage-1 launcher. Preserve
   existing architecture defaults and packaged checkpoints. See
-  [STACKED_NLSA_RESULTS.md](STACKED_NLSA_RESULTS.md) for the single-seed comparison.
+  [new_results/STACKED_NLSA_RESULTS.md](new_results/STACKED_NLSA_RESULTS.md) for the single-seed comparison.
 - Add an explicit raw-only checkpoint-selection option; the legacy default
   remains raw-or-EMA. The new launcher uses raw-only as specified in the prompt.
 - Exclude generated `runs/` outputs and Finder `.DS_Store` metadata from package

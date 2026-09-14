@@ -6,7 +6,7 @@ you need. Work inside `model1_model2_clean_workshop_code_compact/`.
 
 ## 1. Read first
 
-1. `model1_model2_clean_workshop_code_compact/FINDINGS_20260912.md`. This holds the previous session's
+1. `model1_model2_clean_workshop_code_compact/new_results/FINDINGS_20260912.md`. This holds the previous session's
    results. **All of them are Stage 1 only** (frozen exact-score MSE); no posterior was ever computed.
    Pay attention to the "Read this first" section.
 2. `main_style_revised.pdf` (repo root), §3.2–3.3: the NLSA architecture and the tube FSM

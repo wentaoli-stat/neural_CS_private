@@ -201,7 +201,7 @@ bash scripts/run_model1_stage1_stacked.sh runs/NEW_UNUSED_DIRECTORY
 This launcher explicitly selects validation-best **raw** weights for all three
 methods; the original trainer's default still compares raw and EMA validation
 losses. Results for the one-seed, Stage-1-only comparison are in
-[`STACKED_NLSA_RESULTS.md`](STACKED_NLSA_RESULTS.md). Model 2 and Stage 2 have not
+[`new_results/STACKED_NLSA_RESULTS.md`](new_results/STACKED_NLSA_RESULTS.md). Model 2 and Stage 2 have not
 been extended to the stacked method in this scoped change.
 
 ## Max-stable

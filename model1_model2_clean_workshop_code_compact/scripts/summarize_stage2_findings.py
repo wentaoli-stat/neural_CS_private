@@ -31,7 +31,7 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 RUNS = ROOT / "runs"
-OUT = ROOT / "STAGE2_FINDINGS_20260913.md"
+OUT = ROOT / "new_results" / "STAGE2_FINDINGS_20260913.md"
 SIGMAS = ("0.20", "1.052")
 SEEDS = (20260709, 20260710, 20260711, 20260712, 20260713)
 METHODS = ("pilot", "linear", "radial", "stacked")

@@ -29,7 +29,7 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 RUNS = ROOT / "runs"
-OUT = ROOT / "FOLLOWUP_FINDINGS_20260913.md"
+OUT = ROOT / "new_results" / "FOLLOWUP_FINDINGS_20260913.md"
 SEEDS = (20260709, 20260710, 20260711, 20260712, 20260713)
 SIGMA_GRID = ("0.20", "0.5", "0.977", "1.052", "2.0")
 P1_METHODS = ("pilot", "linear", "radial", "stacked")
