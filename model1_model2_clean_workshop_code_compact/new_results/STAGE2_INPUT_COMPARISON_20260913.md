@@ -1,5 +1,13 @@
 # Stage-2 input comparison — Model 1, p=1 (2026-09-13)
 
+> **Read with `FOLLOWUP_FINDINGS_20260913.md` (F3).** Every figure here comes from one draw of the Stage-2
+> random streams: NPE simulation bank 20260723, NPE seed 54000, test seeds 100–109. Replicating those
+> streams showed they contribute more variance to method contrasts than Stage-1 training, and this draw
+> understates the nonlinear-versus-linear gap: at σ_q = 1.052 the pooled gate − linear reduction is
+> 25.6% (15/15 seed × replicate units), not the 10.9% below. The ± values here cover Stage-1 variability
+> only. The tier gaps (unstructured scores 150–180% worse than the gate) are an order of magnitude larger
+> than that replicate noise; margins between linear, gate and stacked are not reliable from this draw.
+
 Which input should the Stage-2 NPE condition on? Eight arms, all at the draft tube bandwidth σ_q = 1.052
 (the one that won in `STAGE2_FINDINGS_20260913.md`), all paired on one NPE simulation bank, one NPE
 training seed, one data-only pilot and the same 60 test datasets. W1 is the 1-d Wasserstein distance, in
