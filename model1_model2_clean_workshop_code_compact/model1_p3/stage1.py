@@ -223,14 +223,16 @@ def expand_anchor(anchor_z: torch.Tensor, like: torch.Tensor) -> torch.Tensor:
 
 
 class LinearDeepSets(nn.Module):
-    """ILSA: pooled identity local scores, conditioned on the anchor."""
+    """ILSA: pooled local map (1, s) or s alone, conditioned on the anchor."""
 
-    def __init__(self, hidden: int, depth: int):
+    def __init__(self, hidden: int, depth: int, include_constant_channel: bool = False):
         super().__init__()
-        self.rho = make_rho(2 * P, hidden, depth, out_dim=P)
+        self.include_constant_channel = bool(include_constant_channel)
+        self.rho = make_rho(int(self.include_constant_channel) + 2 * P, hidden, depth, out_dim=P)
 
     def forward(self, block: torch.Tensor, anchor_z: torch.Tensor) -> torch.Tensor:
-        x = torch.cat([block, expand_anchor(anchor_z, block)], dim=-1)
+        parts = [torch.ones_like(block[..., :1])] if self.include_constant_channel else []
+        x = torch.cat([*parts, block, expand_anchor(anchor_z, block)], dim=-1)
         return self.rho(x).sum(dim=1)
 
 
@@ -238,17 +240,20 @@ class GateDeepSets(nn.Module):
     """Elementwise positive gate applied before pooling."""
 
     def __init__(self, hidden: int, depth: int, gate_hidden: int,
-                 block_mean: np.ndarray, block_sd: np.ndarray):
+                 block_mean: np.ndarray, block_sd: np.ndarray,
+                 include_constant_channel: bool = False):
         super().__init__()
+        self.include_constant_channel = bool(include_constant_channel)
         self.gate = PositiveGateMLP(gate_hidden)
-        self.rho = make_rho(2 * P, hidden, depth, out_dim=P)
+        self.rho = make_rho(int(self.include_constant_channel) + 2 * P, hidden, depth, out_dim=P)
         self.register_buffer("block_mean", torch.as_tensor(block_mean, dtype=torch.float32))
         self.register_buffer("block_sd", torch.as_tensor(block_sd, dtype=torch.float32))
 
     def forward(self, s: torch.Tensor, anchor_z: torch.Tensor) -> torch.Tensor:
         gated = s * self.gate(s, expand_anchor(anchor_z, s))
         block = (gated.mean(dim=2) - self.block_mean) / self.block_sd
-        x = torch.cat([block, expand_anchor(anchor_z, block)], dim=-1)
+        parts = [torch.ones_like(block[..., :1])] if self.include_constant_channel else []
+        x = torch.cat([*parts, block, expand_anchor(anchor_z, block)], dim=-1)
         return self.rho(x).sum(dim=1)
 
 
@@ -325,13 +330,27 @@ class BlockStackDeepSets(nn.Module):
         return self.rho(x).sum(dim=1)
 
 
+def stacked_linear_column_map(
+    stacked: StackedDeepSets, linear_constant_channel: bool,
+) -> tuple[tuple[int, ...], int | None]:
+    """Column map and zeroed constant column for embedding ILSA in the stacked readout."""
+    if linear_constant_channel:
+        if not stacked.include_constant_channel:
+            raise ValueError("ILSA with a constant channel nests only in a stacked map that has one")
+        return (0,) + stacked.linear_column_map, None
+    return stacked.linear_column_map, (0 if stacked.include_constant_channel else None)
+
+
 def build_model(method: str, config: dict[str, Any], stats: dict[str, np.ndarray]) -> nn.Module:
     hidden, depth = int(config["hidden"]), int(config["depth"])
+    # Configs written before the flag existed trained ILSA on s alone.
+    linear_constant = bool(config.get("linear_constant_channel", 0))
     if method == "linear":
-        return LinearDeepSets(hidden, depth)
+        return LinearDeepSets(hidden, depth, include_constant_channel=linear_constant)
     if method == "gate":
         return GateDeepSets(hidden, depth, int(config["gate_hidden"]),
-                            stats["block_mean"], stats["block_sd"])
+                            stats["block_mean"], stats["block_sd"],
+                            include_constant_channel=linear_constant)
     if method == "stacked":
         return StackedDeepSets(hidden, depth, int(config["gate_hidden"]),
                                m_dim=int(config.get("m_dim", 1)),
@@ -563,8 +582,10 @@ def run(args: argparse.Namespace) -> None:
             if linear_rho_state is None or linear_check is None:
                 raise RuntimeError("matched_random requires the untrained linear readout")
             if method == "stacked":
-                load_matched_linear_rho(model.rho, linear_rho_state, model.linear_column_map,
-                                        constant_column=0 if model.include_constant_channel else None)
+                column_map, constant_column = stacked_linear_column_map(
+                    model, bool(args.linear_constant_channel))
+                load_matched_linear_rho(model.rho, linear_rho_state, column_map,
+                                        constant_column=constant_column)
             else:
                 model.rho.load_state_dict(linear_rho_state)
             model = model.to(device)
@@ -615,6 +636,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--gate-hidden", type=int, default=16)
     parser.add_argument("--m-dim", type=int, default=1)
     parser.add_argument("--include-constant-channel", type=int, choices=(0, 1), default=1)
+    parser.add_argument("--linear-constant-channel", type=int, choices=(0, 1), default=1,
+                        help="ILSA and gate readouts see (1, s) when 1, s alone when 0. "
+                             "Use 0 to reproduce runs made before this option existed.")
     parser.add_argument("--iters", type=int, default=20_000)
     parser.add_argument("--batch-size", type=int, default=512)
     parser.add_argument("--lr", type=float, default=1e-4, help="Readout learning rate.")

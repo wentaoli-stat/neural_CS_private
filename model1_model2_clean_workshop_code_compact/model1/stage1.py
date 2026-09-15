@@ -376,6 +376,23 @@ def load_matched_linear_rho(
     stacked_rho.load_state_dict(state, strict=True)
 
 
+def stacked_linear_column_map(
+    stacked: "StackedCSBetaDeepSets", linear_constant_channel: bool,
+) -> tuple[tuple[int, ...], int | None]:
+    """Column map and zeroed constant column for embedding ILSA in the stacked readout.
+
+    ILSA with a constant reads (1, block, anchor) and the stacked map reads
+    (1, block, m, anchor), so the constant's weights carry over to column 0.
+    Without it, the stacked constant column starts at zero instead.
+    """
+    block_col, anchor_col = stacked.linear_column_map
+    if linear_constant_channel:
+        if not stacked.include_constant_channel:
+            raise ValueError("ILSA with a constant channel nests only in a stacked map that has one")
+        return (0, block_col, anchor_col), None
+    return (block_col, anchor_col), (0 if stacked.include_constant_channel else None)
+
+
 class StackedCSBetaDeepSets(nn.Module):
     """Mean-pool (1, s, m(s,a)), then sum shared block readouts."""
 
@@ -431,15 +448,22 @@ class StackedCSBetaDeepSets(nn.Module):
 
 
 class LinearCSBetaDeepSets(nn.Module):
-    """DeepSets readout over block-level linear CS, conditioned on anchor beta."""
+    """DeepSets readout over block-level linear CS, conditioned on anchor beta.
 
-    def __init__(self, hidden: int, depth: int):
+    With ``include_constant_channel`` the local map is phi(s) = (1, s), the same
+    identity-plus-constant channels the stacked NLSA map starts from, so the
+    stacked map differs from ILSA only by its learned channel m(s, a).
+    """
+
+    def __init__(self, hidden: int, depth: int, include_constant_channel: bool = False):
         super().__init__()
-        self.rho = make_rho(2, hidden, depth)
+        self.include_constant_channel = bool(include_constant_channel)
+        self.rho = make_rho(int(self.include_constant_channel) + 2, hidden, depth)
 
     def forward(self, block: torch.Tensor, anchor_z: torch.Tensor) -> torch.Tensor:
         anchor = anchor_z.reshape(-1, 1, 1).expand(-1, block.shape[1], 1)
-        x = torch.cat([block, anchor], dim=-1)
+        parts = [torch.ones_like(block)] if self.include_constant_channel else []
+        x = torch.cat([*parts, block, anchor], dim=-1)
         return self.rho(x).squeeze(-1).sum(dim=1)
 
 
@@ -454,12 +478,14 @@ class RadialCSBetaDeepSets(nn.Module):
         gate_condition_on_anchor: bool,
         block_mean: np.ndarray,
         block_sd: np.ndarray,
+        include_constant_channel: bool = False,
     ):
         super().__init__()
         self.gate_condition_on_anchor = bool(gate_condition_on_anchor)
+        self.include_constant_channel = bool(include_constant_channel)
         gate_input_dim = 2 if self.gate_condition_on_anchor else 1
         self.gate = PositiveMLPMultiplier(gate_hidden, input_dim=gate_input_dim)
-        self.rho = make_rho(2, hidden, depth)
+        self.rho = make_rho(int(self.include_constant_channel) + 2, hidden, depth)
         self.register_buffer("block_mean", torch.as_tensor(block_mean, dtype=torch.float32))
         self.register_buffer("block_sd", torch.as_tensor(block_sd, dtype=torch.float32))
 
@@ -472,7 +498,8 @@ class RadialCSBetaDeepSets(nn.Module):
         block_raw = gated_s.mean(dim=2, keepdim=True)
         block = (block_raw - self.block_mean) / self.block_sd
         anchor = anchor_z.reshape(-1, 1, 1).expand(-1, block.shape[1], 1)
-        x = torch.cat([block, anchor], dim=-1)
+        parts = [torch.ones_like(block)] if self.include_constant_channel else []
+        x = torch.cat([*parts, block, anchor], dim=-1)
         return self.rho(x).squeeze(-1).sum(dim=1)
 
 
@@ -481,8 +508,12 @@ def build_model(
     config: dict[str, Any],
     stats: dict[str, np.ndarray],
 ) -> nn.Module:
+    # Configs written before the flag existed trained ILSA on s alone.
+    linear_constant = bool(config.get("linear_constant_channel", 0))
     if method == "linear":
-        return LinearCSBetaDeepSets(int(config["hidden"]), int(config["depth"]))
+        return LinearCSBetaDeepSets(
+            int(config["hidden"]), int(config["depth"]), include_constant_channel=linear_constant,
+        )
     if method == "radial":
         return RadialCSBetaDeepSets(
             int(config["hidden"]),
@@ -491,6 +522,7 @@ def build_model(
             gate_condition_on_anchor=bool(config.get("gate_condition_on_anchor", 0)),
             block_mean=stats["block_mean"],
             block_sd=stats["block_sd"],
+            include_constant_channel=linear_constant,
         )
     if method == "stacked":
         return StackedCSBetaDeepSets(
@@ -931,6 +963,8 @@ def run(args: argparse.Namespace) -> None:
         raise ValueError(f"Unknown methods: {bad}")
     need_subscores = any(ARCHITECTURES[method].needs_subscores for method in methods)
     need_raw_y = any(ARCHITECTURES[method].needs_raw_y for method in methods)
+    if args.linear_constant_channel and "stacked" in methods and not args.include_constant_channel:
+        raise ValueError("--linear-constant-channel 1 needs --include-constant-channel 1 for stacked")
 
     if args.device == "auto":
         device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -1077,9 +1111,12 @@ def run(args: argparse.Namespace) -> None:
             if linear_initial_rho_state is None or linear_initial_check is None:
                 raise RuntimeError("matched_random requires the saved initial linear rho")
             if method == "stacked":
+                column_map, constant_column = stacked_linear_column_map(
+                    model, bool(args.linear_constant_channel),
+                )
                 load_matched_linear_rho(
-                    model.rho, linear_initial_rho_state, model.linear_column_map,
-                    constant_column=0 if model.include_constant_channel else None,
+                    model.rho, linear_initial_rho_state, column_map,
+                    constant_column=constant_column,
                 )
             else:
                 model.rho.load_state_dict(linear_initial_rho_state)
@@ -1183,6 +1220,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--gate-hidden", type=int, default=16)
     parser.add_argument("--m-dim", type=int, default=1)
     parser.add_argument("--include-constant-channel", type=int, choices=(0, 1), default=1)
+    parser.add_argument("--linear-constant-channel", type=int, choices=(0, 1), default=1,
+                        help="ILSA local map (1, s) when 1, s alone when 0. The gate uses the "
+                             "same readout inputs so it still starts exactly at ILSA. Use 0 to "
+                             "reproduce runs made before this option existed.")
     parser.add_argument("--m-parametrization", choices=M_PARAMETRIZATIONS, default="free",
                         help="'free' is m=MLP(s,a); 'score_scaled' is m=s*MLP(s,a), which "
                              "keeps exact ILSA nesting but restores s-dependent gradients.")

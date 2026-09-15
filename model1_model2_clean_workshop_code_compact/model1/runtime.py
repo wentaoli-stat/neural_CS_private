@@ -100,6 +100,8 @@ class AmortizedScoreRuntime:
             for key in ("m_dim", "include_constant_channel", "gate_hidden", "gate_condition_on_anchor"):
                 if checkpoint_config.get(key) != self.config.get(key):
                     raise ValueError(f"Checkpoint/config mismatch for {key}")
+        if checkpoint_config.get("linear_constant_channel", 0) != self.config.get("linear_constant_channel", 0):
+            raise ValueError("Checkpoint/config mismatch for linear_constant_channel")
         if self.method in {"radial", "stacked"} and not bool(self.config.get("gate_condition_on_anchor", 0)):
             raise ValueError("Formal Mode A radial runtime requires an anchor-conditioned gate")
         model: torch.nn.Module = stage1.build_model(self.method, self.config, self.stats)
@@ -302,6 +304,21 @@ class AmortizedScoreRuntime:
         feat["anchor_z"] = ((u_arr - self.anchor_mean) / self.anchor_sd).astype(np.float32)
         return stage1.predict(self.model, feat, self.method, self.device, int(batch_size)).astype(np.float64)
 
+    @staticmethod
+    def finite_difference_errors(
+        derivative: np.ndarray, fd: np.ndarray, rel_floor: float = 0.1,
+    ) -> tuple[float, float]:
+        """Max absolute and max relative derivative error against finite differences.
+
+        The relative error is taken only where |fd| >= rel_floor. Near zero it
+        turns tiny float32 differences into large ratios, so there the absolute
+        tolerance is the check that applies.
+        """
+        diff = np.abs(np.asarray(derivative) - np.asarray(fd))
+        mask = np.abs(fd) >= rel_floor
+        rel = float(np.max(diff[mask] / np.abs(fd)[mask])) if np.any(mask) else 0.0
+        return float(np.max(diff)), rel
+
     def run_sanity_checks(self, seed: int = 20260709) -> dict[str, object]:
         rng = np.random.default_rng(int(seed))
         pi_values = np.asarray([0.07, 0.30, 0.68], dtype=np.float64)
@@ -324,10 +341,7 @@ class AmortizedScoreRuntime:
         plus = self.score(y, u_values + h, batch_size=3)
         minus = self.score(y, u_values - h, batch_size=3)
         fd = (plus - minus) / (2.0 * h)
-        derivative_max_abs = float(np.max(np.abs(derivative - fd)))
-        derivative_rel = float(
-            np.max(np.abs(derivative - fd) / np.maximum(1e-6, np.abs(fd)))
-        )
+        derivative_max_abs, derivative_rel = self.finite_difference_errors(derivative, fd)
 
         block_perm = self.score(y[:, ::-1, :].copy(), u_values, batch_size=3)
         within_perm = self.score(y[:, :, ::-1].copy(), u_values, batch_size=3)

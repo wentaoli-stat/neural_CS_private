@@ -80,13 +80,14 @@ def test_stacked_block_and_local_permutation_invariance():
     torch.testing.assert_close(base, model(block.flip(1), s.flip(1), anchor))
 
 
-@pytest.mark.parametrize("m_dim,constant", [(1, 1), (4, 0)])
-def test_stacked_runtime_roundtrip(tmp_path, m_dim, constant):
+@pytest.mark.parametrize("m_dim,constant,linear_constant", [(1, 1, 1), (1, 1, 0), (4, 0, 0)])
+def test_stacked_runtime_roundtrip(tmp_path, m_dim, constant, linear_constant):
     args = stage1.build_parser().parse_args([
         "--n-train", "64", "--n-val", "32", "--n-blocks", "4", "--block-size", "7",
         "--methods", "linear,radial,stacked", "--iters", "3", "--batch-size", "16",
         "--lr-schedule", "constant", "--checkpoint-selection", "raw", "--print-every", "1",
         "--m-dim", str(m_dim), "--include-constant-channel", str(constant),
+        "--linear-constant-channel", str(linear_constant),
         "--device", "cpu", "--output-dir", str(tmp_path),
     ])
     stage1.run(args)
